@@ -1,0 +1,155 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Narwal-Roboter verbinden",
+        "description": "Gib die IP-Adresse des Roboters in deinem Netzwerk ein. Die Steuerung läuft lokal, ein Narwal-Konto ist nicht nötig.",
+        "data": {
+          "host": "Host",
+          "port": "Port"
+        },
+        "data_description": {
+          "host": "IP-Adresse oder Hostname des Roboters, zum Beispiel 192.168.1.50.",
+          "port": "Lokaler WebSocket-Port des Roboters. Auf 9002 lassen."
+        }
+      },
+      "reconfigure": {
+        "title": "Adresse des Roboters ändern",
+        "data": {
+          "host": "Host",
+          "port": "Port"
+        },
+        "data_description": {
+          "host": "Neue IP-Adresse oder neuer Hostname desselben Roboters.",
+          "port": "Lokaler WebSocket-Port des Roboters. Auf 9002 lassen."
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Der Roboter ist unter dieser Adresse nicht erreichbar.",
+      "unknown": "Unerwarteter Fehler, Details stehen im Log."
+    },
+    "abort": {
+      "already_configured": "Dieser Roboter ist bereits eingerichtet.",
+      "reconfigure_successful": "Die Adresse wurde aktualisiert.",
+      "wrong_device": "Unter dieser Adresse antwortet ein anderer Roboter."
+    }
+  },
+  "entity": {
+    "vacuum": {
+      "narwal": {
+        "state_attributes": {
+          "fan_speed": {
+            "state": {
+              "mute": "Leise",
+              "normal": "Normal",
+              "strong": "Stark",
+              "deep": "Tief",
+              "super": "Max"
+            }
+          }
+        }
+      }
+    },
+    "sensor": {
+      "task": {
+        "name": "Aufgabe",
+        "state": {
+          "idle": "Bereit",
+          "sweep": "Saugen",
+          "mop": "Wischen",
+          "sweep_then_mop": "Erst saugen, dann wischen",
+          "sweep_and_mop": "Saugen und wischen",
+          "smart_clean": "Smarte Reinigung",
+          "build_map": "Kartierung",
+          "parking": "Andocken",
+          "departure": "Verlässt die Station",
+          "recall": "Rückkehr zur Station",
+          "net_config": "Netzwerkeinrichtung",
+          "upgrade": "Firmware-Update",
+          "relocalization": "Ortung",
+          "wash_and_dry_mop": "Mopp waschen und trocknen",
+          "pairing": "Kopplung",
+          "update_map": "Karte aktualisieren",
+          "composite_clean": "Individuelle Reinigung",
+          "debug": "Debug",
+          "dust_gathering": "Staub absaugen",
+          "dry_station_bag": "Stationsbeutel trocknen",
+          "telecontrol": "Fernsteuerung",
+          "maintain_floor": "Bodenpflege",
+          "search_person": "Personensuche",
+          "video_cruise": "Videorundgang",
+          "pump_troubleshooting": "Pumpenprüfung",
+          "robot_sewage_box_pump_troubleshooting": "Abwasserpumpen-Prüfung",
+          "search_pet": "Haustiersuche"
+        }
+      },
+      "charging_status": {
+        "name": "Ladestatus",
+        "state": {
+          "charging": "Lädt",
+          "discharging": "Entlädt",
+          "not_charging": "Lädt nicht",
+          "full": "Voll",
+          "battery_protect": "Akkuschutz"
+        }
+      },
+      "cleaning_progress": {
+        "name": "Reinigungsfortschritt"
+      },
+      "cleaned_area": {
+        "name": "Gereinigte Fläche"
+      },
+      "cleaning_time": {
+        "name": "Reinigungsdauer"
+      },
+      "remaining_time": {
+        "name": "Restzeit"
+      },
+      "current_room": {
+        "name": "Aktueller Raum"
+      },
+      "maintenance_due": {
+        "name": "Fällige Wartung"
+      },
+      "replacement_due": {
+        "name": "Fälliger Austausch"
+      },
+      "error_code": {
+        "name": "Fehlercode"
+      }
+    },
+    "binary_sensor": {
+      "maintenance_needed": {
+        "name": "Wartung nötig"
+      }
+    },
+    "select": {
+      "mop_humidity": {
+        "name": "Mopp-Feuchtigkeit",
+        "state": {
+          "dry": "Trocken",
+          "normal": "Normal",
+          "wet": "Nass"
+        }
+      }
+    }
+  },
+  "exceptions": {
+    "cannot_connect": {
+      "message": "Keine Verbindung zum Roboter unter {host}: {error}"
+    },
+    "communication_error": {
+      "message": "Kommunikation mit dem Roboter fehlgeschlagen: {error}"
+    },
+    "command_failed": {
+      "message": "Der Roboter hat den Befehl abgelehnt: {result}"
+    },
+    "start_not_supported": {
+      "message": "Eine neue Reinigung zu starten wird noch nicht unterstützt. Start setzt nur eine pausierte Reinigung fort."
+    },
+    "invalid_fan_speed": {
+      "message": "Unbekannte Saugstufe: {fan_speed}"
+    }
+  }
+}

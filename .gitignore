@@ -1,0 +1,7 @@
+.venv/
+.venv-ha/
+__pycache__/
+.pytest_cache/
+*.pyc
+dist/
+map_preview.png

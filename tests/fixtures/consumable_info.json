@@ -1,0 +1,9 @@
+{
+  "MaintainItems": [
+    "side_distance_sensor"
+  ],
+  "ReplaceItems": [
+    "station_bag"
+  ],
+  "UnifiedErrorCode": 0
+}

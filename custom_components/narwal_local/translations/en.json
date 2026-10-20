@@ -1,0 +1,155 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect Narwal robot",
+        "description": "Enter the robot's IP address in your network. The robot is controlled locally, no Narwal account is needed.",
+        "data": {
+          "host": "Host",
+          "port": "Port"
+        },
+        "data_description": {
+          "host": "IP address or hostname of the robot, for example 192.168.1.50.",
+          "port": "Local WebSocket port of the robot. Leave at 9002."
+        }
+      },
+      "reconfigure": {
+        "title": "Change robot address",
+        "data": {
+          "host": "Host",
+          "port": "Port"
+        },
+        "data_description": {
+          "host": "New IP address or hostname of the same robot.",
+          "port": "Local WebSocket port of the robot. Leave at 9002."
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Cannot reach the robot at this address.",
+      "unknown": "Unexpected error, see the log for details."
+    },
+    "abort": {
+      "already_configured": "This robot is already set up.",
+      "reconfigure_successful": "The address was updated.",
+      "wrong_device": "A different robot answers at this address."
+    }
+  },
+  "entity": {
+    "vacuum": {
+      "narwal": {
+        "state_attributes": {
+          "fan_speed": {
+            "state": {
+              "mute": "Quiet",
+              "normal": "Normal",
+              "strong": "Strong",
+              "deep": "Deep",
+              "super": "Max"
+            }
+          }
+        }
+      }
+    },
+    "sensor": {
+      "task": {
+        "name": "Task",
+        "state": {
+          "idle": "Idle",
+          "sweep": "Vacuuming",
+          "mop": "Mopping",
+          "sweep_then_mop": "Vacuuming, then mopping",
+          "sweep_and_mop": "Vacuuming and mopping",
+          "smart_clean": "Smart clean",
+          "build_map": "Mapping",
+          "parking": "Docking",
+          "departure": "Leaving dock",
+          "recall": "Returning to dock",
+          "net_config": "Network setup",
+          "upgrade": "Updating firmware",
+          "relocalization": "Locating itself",
+          "wash_and_dry_mop": "Washing and drying mop",
+          "pairing": "Pairing",
+          "update_map": "Updating map",
+          "composite_clean": "Custom clean",
+          "debug": "Debug",
+          "dust_gathering": "Emptying dust",
+          "dry_station_bag": "Drying station bag",
+          "telecontrol": "Remote control",
+          "maintain_floor": "Floor care",
+          "search_person": "Searching person",
+          "video_cruise": "Video patrol",
+          "pump_troubleshooting": "Pump check",
+          "robot_sewage_box_pump_troubleshooting": "Waste water pump check",
+          "search_pet": "Searching pet"
+        }
+      },
+      "charging_status": {
+        "name": "Charging status",
+        "state": {
+          "charging": "Charging",
+          "discharging": "Discharging",
+          "not_charging": "Not charging",
+          "full": "Full",
+          "battery_protect": "Battery protection"
+        }
+      },
+      "cleaning_progress": {
+        "name": "Cleaning progress"
+      },
+      "cleaned_area": {
+        "name": "Cleaned area"
+      },
+      "cleaning_time": {
+        "name": "Cleaning time"
+      },
+      "remaining_time": {
+        "name": "Remaining time"
+      },
+      "current_room": {
+        "name": "Current room"
+      },
+      "maintenance_due": {
+        "name": "Maintenance due"
+      },
+      "replacement_due": {
+        "name": "Replacement due"
+      },
+      "error_code": {
+        "name": "Error code"
+      }
+    },
+    "binary_sensor": {
+      "maintenance_needed": {
+        "name": "Maintenance needed"
+      }
+    },
+    "select": {
+      "mop_humidity": {
+        "name": "Mop humidity",
+        "state": {
+          "dry": "Dry",
+          "normal": "Normal",
+          "wet": "Wet"
+        }
+      }
+    }
+  },
+  "exceptions": {
+    "cannot_connect": {
+      "message": "Cannot connect to the robot at {host}: {error}"
+    },
+    "communication_error": {
+      "message": "Communication with the robot failed: {error}"
+    },
+    "command_failed": {
+      "message": "The robot rejected the command: {result}"
+    },
+    "start_not_supported": {
+      "message": "Starting a new clean is not supported yet; start only resumes a paused clean."
+    },
+    "invalid_fan_speed": {
+      "message": "Unknown fan speed: {fan_speed}"
+    }
+  }
+}
