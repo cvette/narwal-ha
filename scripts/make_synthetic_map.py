@@ -40,6 +40,20 @@ CARPETS = {1: (20, 20, 35, 30), 2: (30, 70, 50, 80)}  # id: display rect
 NO_CARPETS = {1: (70, 20, 80, 25)}
 FORBIDDEN = (1, 3, (85, 35, 95, 45))  # id, type SWEEP_MOP, display rect (cells)
 
+# Float display cells; written in the border frame like the robot does.
+STATION = (35.0, 48.5, -1.5708)  # col, row, heading (facing down, into the living room)
+FURNITURE = [  # id, FurnitureType, centre col, row, width, height, angle
+    (1, 14, 30.0, 30.0, 20.0, 8.0, 0.0),  # SOFA_MULTI, living room
+    (2, 2, 40.0, 80.0, 30.0, 16.0, 180.0),  # DOUBLE_BED, bedroom
+]
+OBSTACLES = [  # id, ObstacleLabel, col, row
+    (1, 1, 45.0, 20.0),  # CABLE, living room
+    (2, 7, 70.0, 55.0),  # SOCKS, hallway
+    (3, 3, 80.0, 40.0),  # POOP, kitchen
+]
+DIRT = [(1, 1, 90.0, 15.0, 2)]  # id, LIQUID_MANY, col, row, CLEANED (kitchen)
+TASK_ID = 1791364633432638116
+
 WALL = 0x01  # room 0 with a flag bit: wall/obstacle
 ROOM_FLAGS = 0x02
 
@@ -70,6 +84,36 @@ def world_point(col: float, row: float) -> Writer:
     return Writer().float_(1, ORIGIN[0] + col * res).float_(2, ORIGIN[1] + row * res)
 
 
+def border_float(col: float, row: float) -> Writer:
+    """Float point in the border frame (dock, furniture, detections)."""
+    return Writer().float_(1, col + BORDER_LEFT).float_(2, row + BORDER_BOTTOM)
+
+
+def pose(col: float, row: float, theta: float) -> Writer:
+    return Writer().message(1, border_float(col, row)).float_(2, theta)
+
+
+def box(col: float, row: float, width: float | None = None, height: float | None = None) -> Writer:
+    w = Writer().message(1, border_float(col, row))
+    if width is not None:
+        w.float_(2, width).float_(3, height)
+    return w
+
+
+def vision_data() -> Writer:
+    vd = Writer()
+    for fid, ftype, col, row, width, height, angle in FURNITURE:
+        vd.message(
+            1,
+            Writer().varint(1, fid).varint(2, ftype).message(3, box(col, row, width, height)).float_(4, angle),
+        )
+    for oid, label, col, row in OBSTACLES:
+        vd.message(2, Writer().varint(1, oid).varint(2, label).message(3, box(col, row)).varint(4, TASK_ID))
+    for did, label, col, row, status in DIRT:
+        vd.message(3, Writer().varint(1, did).varint(2, label).message(3, box(col, row)).varint(4, status))
+    return vd
+
+
 def rect(c0: int, r0: int, c1: int, r1: int) -> list[tuple[int, int]]:
     return [(c0, r0), (c1, r0), (c1, r1), (c0, r1)]
 
@@ -89,6 +133,7 @@ def main() -> None:
         .varint(4, BORDER_LEFT + WIDTH - 1),
     )
     m.message(7, Writer().float_(1, ORIGIN[0]).float_(2, ORIGIN[1]))
+    m.message(8, pose(*STATION))
 
     fid, ftype, frect = FORBIDDEN
     fa = Writer()
@@ -105,6 +150,7 @@ def main() -> None:
         m.message(12, Writer().varint(1, rid).string(3, name))
 
     m.bytes_(17, grid_blob).varint(18, 3)
+    m.message(24, pose(*STATION))  # docked: robot pose == dock pose
 
     for cid, r in CARPETS.items():
         carpet = Writer().varint(1, cid)
@@ -112,6 +158,7 @@ def main() -> None:
             carpet.message(2, cell_point(c, rr))
         m.message(26, carpet)
 
+    m.message(32, vision_data())
     m.varint(33, 12)
 
     for nid, r in NO_CARPETS.items():

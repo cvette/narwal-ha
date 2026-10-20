@@ -37,6 +37,33 @@ Assistant `config/custom_components/` folder and restart.
 | `sensor.narwal_charging_status`, `_error_code` | diagnostics |
 | `binary_sensor.narwal_charging`, `_maintenance_needed` | |
 | `select.narwal_mop_humidity` | dry / normal / wet |
+| `image.narwal_map` | the map: rooms with names, walls, doors, carpets, no-carpet areas, no-go zones, furniture, objects the camera recognised and the dock |
+| `sensor.narwal_detected_obstacles` | number of objects the camera recognised on the floor (cables, shoes, socks, pet waste, …); list with type and room in attribute `obstacles` |
+
+The map image has these attributes:
+
+| Attribute | Content |
+|---|---|
+| `rooms` | room ids and names |
+| `dock_room` | room the dock stands in |
+| `furniture` | furniture with type (`double_bed`, `sofa_l_shape`, `toilet`, …) and room |
+| `obstacles` | recognised objects with type (`cable`, `shoes`, `poop`, …) and room |
+| `dirt` | recognised dirty spots with type, status (`exploring`, `cleaning`, `cleaned`) and room |
+
+The map is re-read every 15 minutes and re-rendered only when something on it
+changed. Recognised objects reflect the robot's last clean. Show the map on a
+dashboard with a *Picture entity* card. The robot's live position during a
+clean is not drawn yet.
+
+Example automation trigger for pet waste:
+
+```yaml
+trigger:
+  - platform: template
+    value_template: >
+      {{ state_attr('sensor.narwal_detected_obstacles', 'obstacles')
+         | selectattr('type', 'eq', 'poop') | list | count > 0 }}
+```
 
 Updates are pushed by the robot. The integration re-arms the robot's reporting
 every 45 s and polls every 60 s as a fallback; if the connection drops it
@@ -59,9 +86,7 @@ reconnects on its own. Diagnostics can be downloaded from the device page
 1. Verify start, room cleaning, stop and locate on a robot.
 2. Room cleaning through Home Assistant's `vacuum.clean_area` (map robot rooms
    to Home Assistant areas).
-3. The map as an `image` entity (rooms, doors, carpets, no-go zones; the
-   renderer already exists in `protocol/render.py`).
-4. Live robot position on the map.
+3. Live robot position on the map during a clean.
 
 ## Development
 

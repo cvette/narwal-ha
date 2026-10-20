@@ -36,18 +36,23 @@
     }
   },
   "entity": {
-    "vacuum": {
-      "narwal": {
-        "state_attributes": {
-          "fan_speed": {
-            "state": {
-              "mute": "Quiet",
-              "normal": "Normal",
-              "strong": "Strong",
-              "deep": "Deep",
-              "super": "Max"
-            }
-          }
+    "binary_sensor": {
+      "maintenance_needed": {
+        "name": "Maintenance needed"
+      }
+    },
+    "image": {
+      "map": {
+        "name": "Map"
+      }
+    },
+    "select": {
+      "mop_humidity": {
+        "name": "Mop humidity",
+        "state": {
+          "dry": "Dry",
+          "normal": "Normal",
+          "wet": "Wet"
         }
       }
     },
@@ -117,20 +122,23 @@
       },
       "error_code": {
         "name": "Error code"
+      },
+      "detected_obstacles": {
+        "name": "Detected obstacles"
       }
     },
-    "binary_sensor": {
-      "maintenance_needed": {
-        "name": "Maintenance needed"
-      }
-    },
-    "select": {
-      "mop_humidity": {
-        "name": "Mop humidity",
-        "state": {
-          "dry": "Dry",
-          "normal": "Normal",
-          "wet": "Wet"
+    "vacuum": {
+      "narwal": {
+        "state_attributes": {
+          "fan_speed": {
+            "state": {
+              "mute": "Quiet",
+              "normal": "Normal",
+              "strong": "Strong",
+              "deep": "Deep",
+              "super": "Max"
+            }
+          }
         }
       }
     }

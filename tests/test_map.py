@@ -10,11 +10,19 @@ import math
 
 import pytest
 
-from protocol.enums import ForbiddenType, ServiceResult
+from protocol.enums import (
+    DirtLabel,
+    DirtStatus,
+    ForbiddenType,
+    FurnitureType,
+    ObstacleLabel,
+    ServiceResult,
+)
 from protocol.map import (
     CELL_UNKNOWN,
     CELL_WALL,
     CellInt,
+    CellPoint,
     MapInfo,
     decode_get_map_response,
     decode_static_map_payload,
@@ -132,6 +140,44 @@ def test_forbidden_and_wall_roundtrip() -> None:
         assert math.isclose(c.col, col, abs_tol=1e-3) and math.isclose(c.row, row, abs_tol=1e-3)
     js = mi.to_json()
     assert js["forbiddens"][0]["type"] == 2 and len(js["walls"]) == 1
+
+
+def test_dock_and_robot_pose(live_map: MapInfo) -> None:
+    dock = live_map.station
+    assert dock is not None and live_map.robot_pose == dock
+    c = live_map.border_point_to_cell(dock.x, dock.y)
+    assert (c.col, c.row) == (35.0, 48.5)
+    assert math.isclose(dock.theta, -1.5708, abs_tol=1e-4)
+    assert live_map.room_name(live_map.room_at(dock.x, dock.y)) == "Living room"
+
+
+def test_furniture(live_map: MapInfo) -> None:
+    got = [
+        (f.id, f.type, live_map.border_point_to_cell(f.x, f.y), f.width, f.height, f.angle)
+        for f in live_map.furniture
+    ]
+    assert got == [
+        (1, FurnitureType.SOFA_MULTI, CellPoint(30.0, 30.0), 20.0, 8.0, 0.0),
+        (2, FurnitureType.DOUBLE_BED, CellPoint(40.0, 80.0), 30.0, 16.0, 180.0),
+    ]
+    rooms = [live_map.room_name(live_map.room_at(f.x, f.y)) for f in live_map.furniture]
+    assert rooms == ["Living room", "Bedroom"]
+
+
+def test_camera_detections(live_map: MapInfo) -> None:
+    assert [(o.id, o.label, live_map.room_name(live_map.room_at(o.x, o.y))) for o in live_map.obstacles] == [
+        (1, ObstacleLabel.CABLE, "Living room"),
+        (2, ObstacleLabel.SOCKS, "Hallway"),
+        (3, ObstacleLabel.POOP, "Kitchen"),
+    ]
+    assert all(o.task_id == 1791364633432638116 for o in live_map.obstacles)
+    (dirt,) = live_map.dirt
+    assert (dirt.label, dirt.status) == (DirtLabel.LIQUID_MANY, DirtStatus.CLEANED)
+    assert live_map.room_name(live_map.room_at(dirt.x, dirt.y)) == "Kitchen"
+
+
+def test_room_at_outside_map(live_map: MapInfo) -> None:
+    assert live_map.room_at(-1000.0, -1000.0) is None
 
 
 def test_empty_response() -> None:

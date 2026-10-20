@@ -6,13 +6,13 @@ from collections.abc import Awaitable
 from dataclasses import dataclass, replace
 from datetime import datetime
 import logging
-import time
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.util import dt as dt_util
 
 from .const import (
     CONSUMABLES_INTERVAL,
@@ -85,8 +85,8 @@ class NarwalCoordinator(DataUpdateCoordinator[NarwalData]):
         )
         self.robot = robot
         self.static = static
-        self._consumables_due = 0.0
-        self._map_due = 0.0
+        self._consumables_due = dt_util.utcnow()
+        self._map_due = dt_util.utcnow()
 
     @property
     def device_id(self) -> str:
@@ -110,13 +110,13 @@ class NarwalCoordinator(DataUpdateCoordinator[NarwalData]):
             previous = self.data
             consumables = previous.consumables if previous else None
             map_info = previous.map if previous else None
-            now = time.monotonic()
+            now = dt_util.utcnow()
             if consumables is None or now >= self._consumables_due:
                 consumables = await self.robot.get_consumables()
-                self._consumables_due = now + CONSUMABLES_INTERVAL.total_seconds()
+                self._consumables_due = now + CONSUMABLES_INTERVAL
             if map_info is None or now >= self._map_due or map_info.map_id != status.map_id:
                 map_info = await self.robot.get_map()
-                self._map_due = now + MAP_INTERVAL.total_seconds()
+                self._map_due = now + MAP_INTERVAL
         except NarwalError as err:
             raise UpdateFailed(
                 translation_domain=DOMAIN,

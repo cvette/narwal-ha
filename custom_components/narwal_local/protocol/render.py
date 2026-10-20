@@ -1,18 +1,21 @@
 """Render a MapInfo to PNG using only the standard library.
 
 Rooms are coloured by id; walls, doors, carpets, no-carpet areas, forbidden
-zones and virtual walls are drawn on top. The image is flipped so north is up
-as in the app. Room labels need a font and are left to the caller.
+zones, virtual walls, furniture, camera detections and the dock are drawn on
+top. The image is flipped so north is up as in the app. add_room_labels writes
+room names on top when Pillow is installed; everything else uses only the
+standard library.
 """
 
 from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
+import math
 import struct
 import zlib
 
-from .enums import ForbiddenType
+from .enums import ForbiddenType, ObstacleLabel
 from .map import CELL_UNKNOWN, CELL_WALL, CellPoint, MapInfo
 
 RGB = tuple[int, int, int]
@@ -48,6 +51,16 @@ class Theme:
     no_mop: RGB = (37, 99, 235)
     no_sweep: RGB = (234, 179, 8)
     virtual_wall: RGB = (220, 38, 38)
+    furniture: RGB = (236, 236, 240)
+    obstacle: RGB = (217, 70, 239)
+    obstacle_alert: RGB = (239, 68, 68)  # pet waste, liquids
+    dirt: RGB = (146, 94, 48)
+    station: RGB = (250, 204, 21)
+    outline: RGB = (0, 0, 0)
+
+
+# Camera detections drawn in the alert colour.
+ALERT_OBSTACLES = frozenset({ObstacleLabel.POOP, ObstacleLabel.LIQUID})
 
 
 class _Canvas:
@@ -94,6 +107,13 @@ class _Canvas:
         pairs = zip(pts, pts[1:] + (pts[:1] if closed else []), strict=False)
         for (x0, y0), (x1, y1) in pairs:
             self.line(x0, y0, x1, y1, c, thickness)
+
+    def fill_circle(self, cx: float, cy: float, radius: float, c: RGB) -> None:
+        r2 = radius * radius
+        for y in range(int(cy - radius), int(cy + radius) + 1):
+            for x in range(int(cx - radius), int(cx + radius) + 1):
+                if (x + 0.5 - cx) ** 2 + (y + 0.5 - cy) ** 2 <= r2:
+                    self.set(x, y, c)
 
     def fill_polygon(self, pts: Sequence[tuple[float, float]], c: RGB, alpha: float) -> None:
         """Even-odd fill sampled at pixel centres."""
@@ -241,8 +261,101 @@ def render_png(
         (x0, y0), (x1, y1) = (vp.corner(*_cp(mi.world_to_cell(p))) for p in (vw.start, vw.end))
         canvas.line(round(x0), round(y0), round(x1), round(y1), theme.virtual_wall, thick)
 
+    _draw_objects(canvas, mi, vp, theme, thick)
     return canvas.png(), vp
+
+
+def furniture_corners(mi: MapInfo, f) -> list[CellPoint]:
+    """The four corners of a furniture box in display cells (centre + size,
+    rotated by its angle)."""
+    centre = mi.border_point_to_cell(f.x, f.y)
+    a = math.radians(f.angle)
+    cos_a, sin_a = math.cos(a), math.sin(a)
+    out = []
+    for dx, dy in ((-1, -1), (1, -1), (1, 1), (-1, 1)):
+        ox, oy = dx * f.width / 2, dy * f.height / 2
+        out.append(CellPoint(centre.col + ox * cos_a - oy * sin_a, centre.row + ox * sin_a + oy * cos_a))
+    return out
+
+
+def _draw_objects(canvas: _Canvas, mi: MapInfo, vp: Viewport, theme: Theme, thick: int) -> None:
+    """Furniture, camera detections and the dock, on top of everything else."""
+    for f in mi.furniture:
+        corners = [vp.corner(p.col, p.row) for p in furniture_corners(mi, f)]
+        canvas.fill_polygon(corners, theme.furniture, 0.30)
+        canvas.polyline([(round(x), round(y)) for x, y in corners], theme.furniture, closed=True, thickness=thick)
+
+    size = max(3.0, vp.scale * 1.5)
+    for d in mi.dirt:
+        c = mi.border_point_to_cell(d.x, d.y)
+        x, y = vp.corner(c.col, c.row)
+        canvas.fill_circle(x, y, size + 1, theme.outline)
+        canvas.fill_circle(x, y, size, theme.dirt)
+    for o in mi.obstacles:
+        c = mi.border_point_to_cell(o.x, o.y)
+        x, y = vp.corner(c.col, c.row)
+        colour = theme.obstacle_alert if o.label in ALERT_OBSTACLES else theme.obstacle
+        outer = [(x, y - size - 1.5), (x + size + 1.5, y), (x, y + size + 1.5), (x - size - 1.5, y)]
+        inner = [(x, y - size), (x + size, y), (x, y + size), (x - size, y)]
+        canvas.fill_polygon(outer, theme.outline, 1.0)
+        canvas.fill_polygon(inner, colour, 1.0)
+
+    if mi.station is not None:
+        c = mi.border_point_to_cell(mi.station.x, mi.station.y)
+        x, y = vp.corner(c.col, c.row)
+        radius = max(4.0, vp.scale * 2.5)
+        canvas.fill_circle(x, y, radius + 1.5, theme.outline)
+        canvas.fill_circle(x, y, radius, theme.station)
+        # Heading: theta is counter-clockwise in map space; the image y axis is flipped.
+        tip_x = x + math.cos(mi.station.theta) * radius * 1.8
+        tip_y = y - math.sin(mi.station.theta) * radius * 1.8
+        canvas.line(round(x), round(y), round(tip_x), round(tip_y), theme.outline, max(1, thick))
 
 
 def _cp(c: CellPoint) -> tuple[float, float]:
     return (c.col, c.row)
+
+
+def room_label_positions(mi: MapInfo) -> dict[int, tuple[int, int]]:
+    """A stored cell (col, row) per room to put its label on: the room cell
+    nearest the room's centroid, so L-shaped rooms still get a point inside."""
+    w = mi.width
+    cells: dict[int, list[tuple[int, int]]] = {}
+    for idx, v in enumerate(mi.room_grid()):
+        if v not in (CELL_UNKNOWN, CELL_WALL):
+            cells.setdefault(v, []).append((idx % w, idx // w))
+    out: dict[int, tuple[int, int]] = {}
+    for rid, pts in cells.items():
+        cx = sum(c for c, _ in pts) / len(pts)
+        cy = sum(r for _, r in pts) / len(pts)
+        out[rid] = min(pts, key=lambda p: (p[0] - cx) ** 2 + (p[1] - cy) ** 2)
+    return out
+
+
+def add_room_labels(png: bytes, mi: MapInfo, vp: Viewport) -> bytes:
+    """Write room names onto a rendered map. Needs Pillow (Home Assistant ships
+    it); returns the image unchanged when Pillow is not installed."""
+    try:
+        from io import BytesIO  # noqa: PLC0415
+
+        from PIL import Image, ImageDraw, ImageFont  # noqa: PLC0415
+    except ImportError:
+        return png
+    image = Image.open(BytesIO(png)).convert("RGB")
+    draw = ImageDraw.Draw(image)
+    try:
+        font = ImageFont.load_default(size=max(12, vp.scale * 4))
+    except TypeError:  # Pillow < 10.1 has no sized default font
+        font = ImageFont.load_default()
+    positions = room_label_positions(mi)
+    for room in mi.rooms:
+        if not room.name or room.id not in positions:
+            continue
+        x, y = vp.center(*positions[room.id])
+        draw.text(
+            (x, y), room.name, font=font, fill=(255, 255, 255),
+            anchor="mm", stroke_width=2, stroke_fill=(0, 0, 0),
+        )  # fmt: skip
+    out = BytesIO()
+    image.save(out, format="PNG", optimize=True)
+    return out.getvalue()

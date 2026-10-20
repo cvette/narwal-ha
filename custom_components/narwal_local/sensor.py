@@ -19,6 +19,7 @@ from homeassistant.helpers.typing import StateType
 
 from .coordinator import NarwalConfigEntry, NarwalCoordinator, NarwalData
 from .entity import NarwalEntity
+from .map_objects import obstacle_list
 from .protocol import ChargingStatus, TaskType
 
 PARALLEL_UPDATES = 0
@@ -118,6 +119,13 @@ SENSORS: tuple[NarwalSensorDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         value_fn=lambda d: len(d.consumables.replace_items) if d.consumables else None,
         attrs_fn=lambda d: {"items": d.consumables.replace_items} if d.consumables else None,
+    ),
+    NarwalSensorDescription(
+        key="detected_obstacles",
+        translation_key="detected_obstacles",
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=lambda d: len(d.map.obstacles) if d.map else None,
+        attrs_fn=lambda d: {"obstacles": obstacle_list(d.map)} if d.map else None,
     ),
     NarwalSensorDescription(
         key="error_code",

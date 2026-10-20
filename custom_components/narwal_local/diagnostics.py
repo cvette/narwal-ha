@@ -9,6 +9,7 @@ from homeassistant.components.diagnostics import async_redact_data
 from homeassistant.core import HomeAssistant
 
 from .coordinator import NarwalConfigEntry
+from .map_objects import dirt_list, furniture_list, obstacle_list
 
 TO_REDACT = {"token", "device_id", "binded_uuid"}
 
@@ -41,6 +42,10 @@ async def async_get_config_entry_diagnostics(
                 "doors": len(mi.doors),
                 "carpets": len(mi.carpets),
                 "forbiddens": len(mi.forbiddens),
+                "station": asdict(mi.station) if mi.station else None,
+                "furniture": furniture_list(mi),
+                "obstacles": obstacle_list(mi),
+                "dirt": dirt_list(mi),
             }
             if mi
             else None,

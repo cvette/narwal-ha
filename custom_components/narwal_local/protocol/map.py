@@ -7,6 +7,10 @@ Two coordinate systems are in play, both verified on a real robot:
 * Doors, carpets and no-carpet areas are integer cells in the border frame:
   col = x - border.left, row = y - border.bottom.
 
+* The dock, the robot pose, furniture and camera-detected objects are float
+  cells in the same border frame (verified: a double bed lands in the
+  bedroom, a toilet in the bathroom).
+
 Cells and rows are in the stored orientation (row 0 at the bottom); flip
 vertically for display.
 """
@@ -18,8 +22,15 @@ from dataclasses import dataclass, field
 import gzip
 import zlib
 
-from .enums import ForbiddenType, ServiceResult
-from .pb import WIRE_FIXED32, parse, parse_packed_varints, to_int32
+from .enums import (
+    DirtLabel,
+    DirtStatus,
+    ForbiddenType,
+    FurnitureType,
+    ObstacleLabel,
+    ServiceResult,
+)
+from .pb import WIRE_FIXED32, WIRE_VARINT, parse, parse_packed_varints, to_int32
 
 CELL_UNKNOWN = 0
 CELL_WALL = 255
@@ -79,6 +90,51 @@ class Polygon:
     points: list[CellInt] = field(default_factory=list)
 
 
+@dataclass(slots=True, frozen=True)
+class Pose:
+    """Position (border-frame float cells) and heading in radians."""
+
+    x: float
+    y: float
+    theta: float = 0.0
+
+
+@dataclass(slots=True, frozen=True)
+class Furniture:
+    """visionData.funitures: furniture placed in the app or recognised.
+    (x, y) is the centre; width/height in cells; angle in degrees."""
+
+    id: int
+    type: FurnitureType | int
+    x: float
+    y: float
+    width: float
+    height: float
+    angle: float = 0.0
+
+
+@dataclass(slots=True, frozen=True)
+class Obstacle:
+    """visionData.visionObs: an object the camera recognised on the floor."""
+
+    id: int
+    label: ObstacleLabel | int
+    x: float
+    y: float
+    task_id: int = 0
+
+
+@dataclass(slots=True, frozen=True)
+class Dirt:
+    """visionData.visionDirty: a dirty spot the camera recognised."""
+
+    id: int
+    label: DirtLabel | int
+    x: float
+    y: float
+    status: DirtStatus | int = DirtStatus.EXPLORING
+
+
 @dataclass(slots=True)
 class MapInfo:
     result: ServiceResult | int = ServiceResult.UNSPECIFIED
@@ -99,6 +155,11 @@ class MapInfo:
     doors: list[list[CellInt]] = field(default_factory=list)  # 11
     carpets: list[Polygon] = field(default_factory=list)  # 26
     no_carpets: list[Polygon] = field(default_factory=list)  # 51
+    station: Pose | None = None  # 8
+    robot_pose: Pose | None = None  # 24, as of the last map save
+    furniture: list[Furniture] = field(default_factory=list)  # 32.1
+    obstacles: list[Obstacle] = field(default_factory=list)  # 32.2
+    dirt: list[Dirt] = field(default_factory=list)  # 32.3
     map_data_format: int = 0  # 18
     grid_compressed: bytes = b""  # 17
     grid_raw: bytes = b""
@@ -127,6 +188,19 @@ class MapInfo:
 
     def border_to_cell(self, c: CellInt) -> CellPoint:
         return CellPoint(float(c.x - self.border_left), float(c.y - self.border_bottom))
+
+    def border_point_to_cell(self, x: float, y: float) -> CellPoint:
+        """Float border-frame point (dock, furniture, objects) -> display cell."""
+        return CellPoint(x - self.border_left, y - self.border_bottom)
+
+    def room_at(self, x: float, y: float) -> int | None:
+        """Room id under a border-frame point, or None outside any room."""
+        c = self.border_point_to_cell(x, y)
+        col, row = int(c.col), int(c.row)
+        if not (0 <= col < self.width and 0 <= row < self.height):
+            return None
+        v = self.room_grid()[row * self.width + col]
+        return v if v not in (CELL_UNKNOWN, CELL_WALL) else None
 
     # --- grid -----------------------------------------------------------
 
@@ -273,6 +347,93 @@ def _door(buf: bytes) -> list[CellInt]:
     return [_cell_int(f.data) for f in parse(buf) if f.num == 2]
 
 
+def _pose(buf: bytes) -> Pose:
+    """{1 Point, 2 theta}."""
+    x = y = theta = 0.0
+    for f in parse(buf):
+        if f.num == 1:
+            p = _point(f.data)
+            x, y = p.x, p.y
+        elif f.num == 2 and f.wtype == WIRE_FIXED32:
+            theta = f.float
+    return Pose(x, y, theta)
+
+
+def _scalar(f) -> float:
+    """Box sizes arrive as floats on the robot; the schema says uint32."""
+    return f.float if f.wtype == WIRE_FIXED32 else float(f.int)
+
+
+def _box(buf: bytes) -> tuple[float, float, float, float]:
+    """Box{1 origin Point, 2 width, 3 height} -> (x, y, width, height)."""
+    x = y = w = h = 0.0
+    for f in parse(buf):
+        if f.num == 1:
+            p = _point(f.data)
+            x, y = p.x, p.y
+        elif f.num == 2:
+            w = _scalar(f)
+        elif f.num == 3:
+            h = _scalar(f)
+    return x, y, w, h
+
+
+def _furniture(buf: bytes) -> Furniture:
+    fid = ftype = 0
+    x = y = w = h = angle = 0.0
+    for f in parse(buf):
+        if f.num == 1:
+            fid = f.int
+        elif f.num == 2:
+            ftype = f.int
+        elif f.num == 3:
+            x, y, w, h = _box(f.data)
+        elif f.num == 4:
+            angle = _scalar(f)
+    return Furniture(fid, FurnitureType.from_value(ftype), x, y, w, h, angle)
+
+
+def _obstacle(buf: bytes) -> Obstacle:
+    oid = label = task = 0
+    x = y = 0.0
+    for f in parse(buf):
+        if f.num == 1:
+            oid = f.int
+        elif f.num == 2:
+            label = f.int
+        elif f.num == 3:
+            x, y, _, _ = _box(f.data)
+        elif f.num == 4 and f.wtype == WIRE_VARINT:
+            task = f.int
+    return Obstacle(oid, ObstacleLabel.from_value(label), x, y, task)
+
+
+def _dirt(buf: bytes) -> Dirt:
+    did = label = status = 0
+    x = y = 0.0
+    for f in parse(buf):
+        if f.num == 1:
+            did = f.int
+        elif f.num == 2:
+            label = f.int
+        elif f.num == 3:
+            x, y, _, _ = _box(f.data)
+        elif f.num == 4:
+            status = f.int
+    return Dirt(did, DirtLabel.from_value(label), x, y, DirtStatus.from_value(status))
+
+
+def _vision_data(buf: bytes, mi: MapInfo) -> None:
+    """VisionData{1 funitures, 2 visionObs, 3 visionDirty}."""
+    for f in parse(buf):
+        if f.num == 1:
+            mi.furniture.append(_furniture(f.data))
+        elif f.num == 2:
+            mi.obstacles.append(_obstacle(f.data))
+        elif f.num == 3:
+            mi.dirt.append(_dirt(f.data))
+
+
 def _inflate(buf: bytes) -> bytes:
     if buf[:2] == b"\x1f\x8b":
         return gzip.decompress(buf)
@@ -304,6 +465,12 @@ def decode_static_map_payload(payload: bytes) -> MapInfo:
             case 7:
                 origin = _point(f.data)
                 mi.origin_x, mi.origin_y = origin.x, origin.y
+            case 8:
+                mi.station = _pose(f.data)
+            case 24:
+                mi.robot_pose = _pose(f.data)
+            case 32:
+                _vision_data(f.data, mi)
             case 9:
                 mi.forbiddens.append(_forbidden(f.data))
             case 11:

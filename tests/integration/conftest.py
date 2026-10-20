@@ -66,6 +66,7 @@ class FakeRobot:
         self.firmware = decode_firmware_version(load_bin("firmware_version"))
         self.consumables = decode_consumable_info(load_bin("consumable_info"))
         self.map = decode_get_map_response(load_bin("get_map"))
+        self.map_fetches = 0
 
     def __call__(self, host: str, port: int = 9002, **_: object) -> FakeRobot:
         """Acts as the NarwalRobot constructor."""
@@ -114,6 +115,7 @@ class FakeRobot:
 
     async def get_map(self):
         self._ensure()
+        self.map_fetches += 1
         return self.map
 
     async def activate_reporting(self, seconds: int = 60):

@@ -162,3 +162,115 @@ REPLACE_ITEM_NAMES: dict[int, str] = {
     21: "silver_ions", 22: "curing_agent", 23: "heavy_detergent",
     24: "inner_dust_box",
 }  # fmt: skip
+
+
+class FurnitureType(_NamedIntEnum):
+    """Furniture.furnitureType (MapBaseType). The app spells CLOSESTOOL and
+    REFRIGERTOR; renamed here to TOILET and REFRIGERATOR."""
+
+    UNSPECIFIED = 0
+    SINGLE_BED = 1
+    DOUBLE_BED = 2
+    BABY_BED = 3
+    DINNER_TABLE_SQUARE = 4
+    DINNER_TABLE_ROUND = 5
+    TEA_TABLE_SQUARE = 6
+    TEA_TABLE_ROUND = 7
+    TV_CUPBOARD = 8
+    BEDSIDE_TABLE = 9
+    LOCKER = 10
+    WARDROBE = 11
+    SHOE_CUPBOARD = 12
+    SOFA_SINGLE = 13
+    SOFA_MULTI = 14
+    SOFA_L_SHAPE = 15
+    SOFA_LAZY = 16
+    CHAIR = 17
+    BAR_CHAIR = 18
+    CAT_TOILET = 19
+    PET_EATING_AREA = 20
+    PET_HOUSE = 21
+    WASHING_MACHINE = 22
+    REFRIGERATOR = 23
+    VERTICAL_AIRCON = 24
+    VERTICAL_FAN = 25
+    POTTED_PLANT = 26
+    FLOOR_MIRROR = 27
+    TOILET = 28
+    PIANO = 29
+    SOFA_U_SHAPE = 30
+    DESK = 31
+    GRAND_PIANO = 32
+    WASHBASIN = 33
+    COOKER_HOOD_STOVE = 34
+    WINE_CABINET = 74
+    CAT_HOUSE = 75
+    DOG_HOUSE = 76
+    ROUND_PLACEHOLDER = 77
+    WEIGHING_SCALE = 78
+
+
+class ObstacleLabel(_NamedIntEnum):
+    """VisionObs.label: objects the camera recognised during a clean."""
+
+    UNSPECIFIED = 0
+    CABLE = 1
+    TISSUE = 2
+    POOP = 3
+    LIQUID = 4
+    SHOES = 5
+    SOLID = 6
+    SOCKS = 7
+    PLASTIC_BAG = 8
+    TRASH_BIN = 9
+    NORMAL = 10
+    UNCLEANABLE = 11
+    TEXTILES = 12
+    NOT_EXIST = 13
+    GROUND_TEXTURE = 14
+    PET = 15
+    CLIFF = 16
+    SQUATTING_WC = 17
+    CHAIR_U_LEGS = 18
+    CHAIR_WHEEL = 19
+    FLOOR_MIRROR = 20
+    BOOK = 21
+    STICK = 22
+    MERGE_FLEXIBLE = 23
+    JEWELRY = 24
+    PHONE = 25
+    WALLET = 26
+    KEY = 27
+    BANKNOTE = 28
+    REMOTE_CONTROL = 29
+    GLASSES = 30
+    WATCH = 31
+    CARD = 32
+    HEADPHONES = 33
+    BABY_TOY = 34
+    PLANT = 35
+    FITNESS_EQUIPMENT = 36
+    PET_TOY = 37
+    DANGEROUS_GOODS = 38
+    DECORATION = 39
+    PAPER_BOX = 40
+    PET_CAT = 41
+    PET_DOG = 42
+
+
+class DirtLabel(_NamedIntEnum):
+    """VisionDirty.label."""
+
+    UNSPECIFIED = 0
+    LIQUID_MANY = 1
+    SOLID_MANY = 2
+    LIQUID_MASSIVE = 3
+    SOLID_MASSIVE = 4
+
+
+class DirtStatus(_NamedIntEnum):
+    """VisionDirty.status."""
+
+    EXPLORING = 0
+    CLEANING = 1
+    CLEANED = 2

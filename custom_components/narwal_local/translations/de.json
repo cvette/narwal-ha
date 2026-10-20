@@ -36,18 +36,23 @@
     }
   },
   "entity": {
-    "vacuum": {
-      "narwal": {
-        "state_attributes": {
-          "fan_speed": {
-            "state": {
-              "mute": "Leise",
-              "normal": "Normal",
-              "strong": "Stark",
-              "deep": "Tief",
-              "super": "Max"
-            }
-          }
+    "binary_sensor": {
+      "maintenance_needed": {
+        "name": "Wartung nötig"
+      }
+    },
+    "image": {
+      "map": {
+        "name": "Karte"
+      }
+    },
+    "select": {
+      "mop_humidity": {
+        "name": "Mopp-Feuchtigkeit",
+        "state": {
+          "dry": "Trocken",
+          "normal": "Normal",
+          "wet": "Nass"
         }
       }
     },
@@ -117,20 +122,23 @@
       },
       "error_code": {
         "name": "Fehlercode"
+      },
+      "detected_obstacles": {
+        "name": "Erkannte Hindernisse"
       }
     },
-    "binary_sensor": {
-      "maintenance_needed": {
-        "name": "Wartung nötig"
-      }
-    },
-    "select": {
-      "mop_humidity": {
-        "name": "Mopp-Feuchtigkeit",
-        "state": {
-          "dry": "Trocken",
-          "normal": "Normal",
-          "wet": "Nass"
+    "vacuum": {
+      "narwal": {
+        "state_attributes": {
+          "fan_speed": {
+            "state": {
+              "mute": "Leise",
+              "normal": "Normal",
+              "strong": "Stark",
+              "deep": "Tief",
+              "super": "Max"
+            }
+          }
         }
       }
     }

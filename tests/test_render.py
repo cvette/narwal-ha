@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 import struct
 import zlib
 
@@ -9,7 +10,15 @@ import pytest
 
 from protocol.enums import ForbiddenType
 from protocol.map import ForbiddenArea, MapInfo, decode_get_map_response
-from protocol.render import Theme, render_png, room_color
+from protocol.enums import ObstacleLabel
+from protocol.render import (
+    Theme,
+    add_room_labels,
+    furniture_corners,
+    render_png,
+    room_color,
+    room_label_positions,
+)
 
 
 def decode_png(data: bytes) -> tuple[int, int, bytes]:
@@ -48,13 +57,16 @@ def live_map(fixture_bin) -> MapInfo:
 
 def test_uncropped_size_and_room_colours(live_map: MapInfo) -> None:
     scale = 2
-    png, vp = render_png(live_map, scale, crop=False)
+    # Without overlays every room cell must show exactly its room colour.
+    bare = replace(
+        live_map, doors=[], carpets=[], no_carpets=[], forbiddens=[], virtual_walls=[],
+        furniture=[], obstacles=[], dirt=[], station=None,
+    )  # fmt: skip
+    png, vp = render_png(bare, scale, crop=False)
     width, height, pixels = decode_png(png)
     assert (width, height) == (live_map.width * scale, live_map.height * scale) == vp.size
 
     grid = live_map.room_grid()
-    # Every room-coloured cell renders its room colour unless an overlay sits on it:
-    # check a sample of cells away from doors/carpets by requiring a full match rate.
     checked = matched = 0
     for idx in range(0, len(grid), 37):
         rid = grid[idx]
@@ -65,7 +77,7 @@ def test_uncropped_size_and_room_colours(live_map: MapInfo) -> None:
         checked += 1
         matched += pixel(width, pixels, x, y) == room_color(rid)
     assert checked > 50
-    assert matched / checked > 0.85  # carpets and zones cover the rest
+    assert matched == checked
 
 
 def test_crop_keeps_all_known_cells(live_map: MapInfo) -> None:
@@ -78,6 +90,69 @@ def test_crop_keeps_all_known_cells(live_map: MapInfo) -> None:
         if v:
             col, row = idx % live_map.width, idx // live_map.width
             assert vp.col0 <= col < vp.col1 and vp.row0 <= row < vp.row1
+
+
+def test_label_positions_lie_inside_their_rooms(live_map: MapInfo) -> None:
+    grid = live_map.room_grid()
+    positions = room_label_positions(live_map)
+    assert set(positions) == {r.id for r in live_map.rooms}
+    for rid, (col, row) in positions.items():
+        assert grid[row * live_map.width + col] == rid
+
+
+def test_room_labels_change_pixels_not_size(live_map: MapInfo) -> None:
+    pytest.importorskip("PIL")
+    png, vp = render_png(live_map, 4)
+    labelled = add_room_labels(png, live_map, vp)
+    assert labelled != png
+    width, height, _ = decode_png_any(labelled)
+    assert (width, height) == vp.size
+
+
+def decode_png_any(data: bytes) -> tuple[int, int, bytes]:
+    """Size via Pillow (its encoder may use filters our minimal reader skips)."""
+    from io import BytesIO
+
+    from PIL import Image
+
+    img = Image.open(BytesIO(data))
+    return img.width, img.height, b""
+
+
+def test_dock_and_detections_are_drawn(live_map: MapInfo) -> None:
+    theme = Theme()
+    png, vp = render_png(live_map, 4, crop=False, theme=theme)
+    width, _, pixels = decode_png(png)
+
+    def at(x: float, y: float) -> tuple[int, int, int]:
+        c = live_map.border_point_to_cell(x, y)
+        px, py = vp.corner(c.col, c.row)
+        return pixel(width, pixels, int(px), int(py))
+
+    dock = live_map.station
+    # The heading line starts at the centre; sample beside it.
+    c = live_map.border_point_to_cell(dock.x, dock.y)
+    px, py = vp.corner(c.col, c.row)
+    assert pixel(width, pixels, int(px) - 4, int(py) - 2) == theme.station
+    poop = next(o for o in live_map.obstacles if o.label is ObstacleLabel.POOP)
+    cable = next(o for o in live_map.obstacles if o.label is ObstacleLabel.CABLE)
+    assert at(poop.x, poop.y) == theme.obstacle_alert
+    assert at(cable.x, cable.y) == theme.obstacle
+    assert at(live_map.dirt[0].x, live_map.dirt[0].y) == theme.dirt
+
+
+def test_furniture_corners_follow_angle(live_map: MapInfo) -> None:
+    sofa, bed = live_map.furniture
+    corners = furniture_corners(live_map, sofa)
+    cols = sorted(round(p.col, 6) for p in corners)
+    rows = sorted(round(p.row, 6) for p in corners)
+    assert (cols[0], cols[-1], rows[0], rows[-1]) == (20.0, 40.0, 26.0, 34.0)
+    # 180° turns the box onto itself.
+    bed_cols = sorted(round(p.col, 6) for p in furniture_corners(live_map, bed))
+    assert (bed_cols[0], bed_cols[-1]) == (25.0, 55.0)
+    turned = replace(sofa, angle=90.0)
+    cols = sorted(round(p.col, 6) for p in furniture_corners(live_map, turned))
+    assert (cols[0], cols[-1]) == (26.0, 34.0), "90° swaps width and height"
 
 
 def test_forbidden_zone_is_drawn() -> None:
