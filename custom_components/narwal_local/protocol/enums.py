@@ -274,3 +274,58 @@ class DirtStatus(_NamedIntEnum):
     EXPLORING = 0
     CLEANING = 1
     CLEANED = 2
+
+
+# --- Station and robot tank states (RobotBaseStatus) ----------------------------
+
+
+class CleanWaterTankState(_NamedIntEnum):
+    """Field 23."""
+
+    UNSPECIFIED = 0
+    NORMAL = 1
+    EMPTY = 2
+    NOT_INSTALLED = 3
+    ABNORMAL = 4
+
+
+class SewageTankState(_NamedIntEnum):
+    """Field 24: the dirty water tank. The robot cannot tell full from missing."""
+
+    UNSPECIFIED = 0
+    NORMAL = 1
+    FULL_OR_MISSING = 2
+    ABNORMAL = 3
+
+
+class DetergentState(_NamedIntEnum):
+    """Field 12."""
+
+    UNSPECIFIED = 0
+    OK = 1
+    NOT_INSTALLED = 2
+    EMPTY = 3
+    RUNNING_OUT = 4
+    NOT_USED = 5
+
+
+class DustBoxState(_NamedIntEnum):
+    """Field 20."""
+
+    UNSPECIFIED = 0
+    NORMAL = 1
+    NOT_INSTALLED = 2
+    ABNORMAL = 3
+    CLEAN_SUGGESTED = 4
+
+
+class BagState(_NamedIntEnum):
+    """Field 21 (robot dust bag) uses 1 normal, 2 missing, 3 replace, 4 fault;
+    field 39 (station dust bag) uses 1 installed, 2 missing, 3 replace,
+    4 fault, so one enum serves both."""
+
+    UNSPECIFIED = 0
+    OK = 1
+    NOT_INSTALLED = 2
+    REPLACE_SUGGESTED = 3
+    ABNORMAL = 4

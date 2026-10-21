@@ -24,7 +24,20 @@ from homeassistant.util import dt as dt_util
 from .coordinator import NarwalConfigEntry, NarwalCoordinator, NarwalData
 from .entity import NarwalEntity
 from .map_objects import obstacle_list, obstacle_summary
-from .protocol import ChargingStatus, TaskType
+from .protocol import (
+    ERROR_CATEGORIES,
+    ChargingStatus,
+    TaskType,
+    error_category,
+    error_hex,
+)
+from .protocol.enums import (
+    BagState,
+    CleanWaterTankState,
+    DetergentState,
+    DustBoxState,
+    SewageTankState,
+)
 
 PARALLEL_UPDATES = 0
 
@@ -41,6 +54,31 @@ def _enum_state(value: Any, options: list[str]) -> str | None:
 class NarwalSensorDescription(SensorEntityDescription):
     value_fn: Callable[[NarwalData], StateType]
     attrs_fn: Callable[[NarwalData], dict[str, Any] | None] = lambda _: None
+    # Created only when the robot reports what the sensor shows.
+    exists_fn: Callable[[NarwalData], bool] = lambda _: True
+
+
+def _options(enum) -> list[str]:
+    return [m.name.lower() for m in enum if m.value != 0]
+
+
+def _station_sensor(key: str, field: int, enum, attr: str) -> NarwalSensorDescription:
+    options = _options(enum)
+    return NarwalSensorDescription(
+        key=key,
+        translation_key=key,
+        device_class=SensorDeviceClass.ENUM,
+        options=options,
+        value_fn=lambda d: _enum_state(getattr(d.status, attr), options),
+        exists_fn=lambda d: d.status.has_field(field),
+    )
+
+
+ERROR_OPTIONS = ["none", *ERROR_CATEGORIES]
+
+
+def _error_state(d: NarwalData) -> str:
+    return error_category(d.status.error_codes[0]) if d.status.error_codes else "none"
 
 
 SENSORS: tuple[NarwalSensorDescription, ...] = (
@@ -118,6 +156,23 @@ SENSORS: tuple[NarwalSensorDescription, ...] = (
         value_fn=lambda d: obstacle_summary(d.map, d.names) if d.map else None,
     ),
     NarwalSensorDescription(
+        key="error",
+        translation_key="error",
+        device_class=SensorDeviceClass.ENUM,
+        options=ERROR_OPTIONS,
+        value_fn=_error_state,
+        attrs_fn=lambda d: {
+            "codes": [error_hex(c) for c in d.status.error_codes],
+            "categories": [error_category(c) for c in d.status.error_codes],
+        },
+    ),
+    _station_sensor("clean_water_tank", 23, CleanWaterTankState, "clean_water"),
+    _station_sensor("dirty_water_tank", 24, SewageTankState, "dirty_water"),
+    _station_sensor("detergent", 12, DetergentState, "detergent"),
+    _station_sensor("dust_box", 20, DustBoxState, "dust_box"),
+    _station_sensor("dust_bag", 21, BagState, "dust_bag"),
+    _station_sensor("station_bag", 39, BagState, "station_bag"),
+    NarwalSensorDescription(
         key="error_code",
         translation_key="error_code",
         entity_category=EntityCategory.DIAGNOSTIC,
@@ -164,7 +219,9 @@ async def async_setup_entry(
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     coordinator = entry.runtime_data
-    entities: list[SensorEntity] = [NarwalSensor(coordinator, d) for d in SENSORS]
+    entities: list[SensorEntity] = [
+        NarwalSensor(coordinator, d) for d in SENSORS if d.exists_fn(coordinator.data)
+    ]
     entities += [NarwalRestoreSensor(coordinator, d) for d in LAST_CLEAN_SENSORS]
     entities.append(NarwalCurrentRoomSensor(coordinator))
     async_add_entities(entities)

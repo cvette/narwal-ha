@@ -39,6 +39,15 @@
     "binary_sensor": {
       "maintenance_needed": {
         "name": "Wartung nötig"
+      },
+      "clean_water_empty": {
+        "name": "Frischwasser leer"
+      },
+      "dirty_water_full": {
+        "name": "Schmutzwasser voll"
+      },
+      "detergent_low": {
+        "name": "Reinigungsmittel knapp"
       }
     },
     "image": {
@@ -143,6 +152,100 @@
       },
       "last_clean_duration": {
         "name": "Dauer letzte Reinigung"
+      },
+      "error": {
+        "name": "Fehler",
+        "state": {
+          "none": "Kein Fehler",
+          "battery": "Akkufehler",
+          "battery_temperature": "Akku zu heiß oder zu kalt",
+          "bumper": "Stoßfänger defekt",
+          "charging": "Ladefehler – Ladekontakte reinigen",
+          "clean_water_empty": "Frischwassertank leer",
+          "clean_water_tank_missing": "Frischwassertank fehlt",
+          "cleaning_base": "Waschwanne nicht eingesetzt",
+          "dirty_water_full": "Schmutzwassertank voll oder fehlt",
+          "dust_box": "Staubbehälter oder Staubbeutel fehlt",
+          "fan": "Sauggebläse-Fehler",
+          "leave_dock": "Kommt nicht aus der Station – Bereich davor freiräumen",
+          "lidar": "Lidar-Fehler",
+          "lifted": "Roboter angehoben oder Räder hängen",
+          "low_battery": "Akku zu schwach zum Fortfahren",
+          "map": "Karte konnte nicht geladen werden",
+          "mop": "Mopp-Modul-Fehler",
+          "no_go_zone": "Roboter steht in einer Sperrzone",
+          "overflow": "Wasserüberlauf in der Station",
+          "positioning": "Roboter findet sich auf der Karte nicht zurecht",
+          "return_to_dock": "Kann nicht zur Station zurückkehren",
+          "roller_brush": "Hauptbürste verheddert oder blockiert",
+          "sensor": "Sensorfehler",
+          "side_brush": "Seitenbürste blockiert",
+          "station": "Stationsfehler",
+          "station_power": "Station ohne Strom oder ohne Kontakt",
+          "stuck": "Roboter steckt fest",
+          "system": "Systemfehler – Roboter neu starten",
+          "task_interrupted": "Aufgabe abgebrochen – erneut starten",
+          "top_cover": "Deckel nicht geschlossen",
+          "water_module": "Fehler am Wasserwechselmodul",
+          "water_module_missing": "Wasserwechselmodul fehlt",
+          "water_pump": "Wasserpumpen-Fehler",
+          "wheel": "Rad blockiert oder rutscht",
+          "unknown": "Unbekannter Fehler (siehe Code)"
+        }
+      },
+      "clean_water_tank": {
+        "name": "Frischwassertank",
+        "state": {
+          "normal": "OK",
+          "empty": "Leer",
+          "not_installed": "Fehlt",
+          "abnormal": "Fehler"
+        }
+      },
+      "dirty_water_tank": {
+        "name": "Schmutzwassertank",
+        "state": {
+          "normal": "OK",
+          "full_or_missing": "Voll oder fehlt",
+          "abnormal": "Fehler"
+        }
+      },
+      "detergent": {
+        "name": "Reinigungsmittel",
+        "state": {
+          "ok": "OK",
+          "not_installed": "Fehlt",
+          "empty": "Leer",
+          "running_out": "Fast leer",
+          "not_used": "Nicht verwendet"
+        }
+      },
+      "dust_box": {
+        "name": "Staubbehälter",
+        "state": {
+          "normal": "OK",
+          "not_installed": "Fehlt",
+          "abnormal": "Fehler",
+          "clean_suggested": "Bitte leeren"
+        }
+      },
+      "dust_bag": {
+        "name": "Staubbeutel",
+        "state": {
+          "ok": "OK",
+          "not_installed": "Fehlt",
+          "replace_suggested": "Wechseln",
+          "abnormal": "Fehler"
+        }
+      },
+      "station_bag": {
+        "name": "Staubbeutel Station",
+        "state": {
+          "ok": "OK",
+          "not_installed": "Fehlt",
+          "replace_suggested": "Wechseln",
+          "abnormal": "Fehler"
+        }
       }
     },
     "vacuum": {

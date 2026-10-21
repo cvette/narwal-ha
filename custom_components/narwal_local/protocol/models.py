@@ -12,12 +12,17 @@ from enum import StrEnum
 from .enums import (
     MAINTAIN_ITEM_NAMES,
     REPLACE_ITEM_NAMES,
+    BagState,
     ChargingStatus,
+    CleanWaterTankState,
+    DetergentState,
+    DustBoxState,
     FanLevel,
     FirmwareStatus,
     IdleStatus,
     MopHumidity,
     ServiceResult,
+    SewageTankState,
     TaskType,
 )
 from .features import FEATURE_IS_BOOL, FEATURE_NAMES
@@ -54,6 +59,38 @@ class RobotBaseStatus:
     charging_status: ChargingStatus | int = ChargingStatus.UNSPECIFIED  # 47
     battery_cooling: int = 0  # 49
     raw_fields: dict[int, int] = field(default_factory=dict)
+
+    def has_field(self, num: int) -> bool:
+        """Whether the robot reported this RobotBaseStatus field (models
+        without a station part or dust bag leave some out)."""
+        return num in self.raw_fields
+
+    def _enum_field(self, num: int, enum):
+        return enum.from_value(self.raw_fields.get(num, 0))
+
+    @property
+    def clean_water(self) -> CleanWaterTankState | int:
+        return self._enum_field(23, CleanWaterTankState)
+
+    @property
+    def dirty_water(self) -> SewageTankState | int:
+        return self._enum_field(24, SewageTankState)
+
+    @property
+    def detergent(self) -> DetergentState | int:
+        return self._enum_field(12, DetergentState)
+
+    @property
+    def dust_box(self) -> DustBoxState | int:
+        return self._enum_field(20, DustBoxState)
+
+    @property
+    def dust_bag(self) -> BagState | int:
+        return self._enum_field(21, BagState)
+
+    @property
+    def station_bag(self) -> BagState | int:
+        return self._enum_field(39, BagState)
 
     @property
     def task(self) -> TaskType | int:

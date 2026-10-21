@@ -39,6 +39,15 @@
     "binary_sensor": {
       "maintenance_needed": {
         "name": "Maintenance needed"
+      },
+      "clean_water_empty": {
+        "name": "Clean water empty"
+      },
+      "dirty_water_full": {
+        "name": "Dirty water full"
+      },
+      "detergent_low": {
+        "name": "Detergent low"
       }
     },
     "image": {
@@ -143,6 +152,100 @@
       },
       "last_clean_duration": {
         "name": "Last clean duration"
+      },
+      "error": {
+        "name": "Error",
+        "state": {
+          "none": "No error",
+          "battery": "Battery fault",
+          "battery_temperature": "Battery too hot or too cold",
+          "bumper": "Bumper fault",
+          "charging": "Charging fault – clean the charging contacts",
+          "clean_water_empty": "Clean water tank empty",
+          "clean_water_tank_missing": "Clean water tank missing",
+          "cleaning_base": "Wash tray not seated",
+          "dirty_water_full": "Dirty water tank full or missing",
+          "dust_box": "Dust box or dust bag missing",
+          "fan": "Suction fan fault",
+          "leave_dock": "Cannot leave the dock – clear the area in front of it",
+          "lidar": "Lidar fault",
+          "lifted": "Robot lifted or wheels hanging",
+          "low_battery": "Battery too low to continue",
+          "map": "Map could not be loaded",
+          "mop": "Mop module fault",
+          "no_go_zone": "Robot is inside a no-go zone",
+          "overflow": "Station water overflow",
+          "positioning": "Robot cannot locate itself on the map",
+          "return_to_dock": "Cannot return to the dock",
+          "roller_brush": "Main brush tangled or blocked",
+          "sensor": "Sensor fault",
+          "side_brush": "Side brush blocked",
+          "station": "Station fault",
+          "station_power": "Station has no power or no contact",
+          "stuck": "Robot stuck",
+          "system": "System fault – restart the robot",
+          "task_interrupted": "Task interrupted – start it again",
+          "top_cover": "Top cover not closed",
+          "water_module": "Water exchange module fault",
+          "water_module_missing": "Water exchange module missing",
+          "water_pump": "Water pump fault",
+          "wheel": "Wheel blocked or slipping",
+          "unknown": "Unknown error (see the code)"
+        }
+      },
+      "clean_water_tank": {
+        "name": "Clean water tank",
+        "state": {
+          "normal": "OK",
+          "empty": "Empty",
+          "not_installed": "Missing",
+          "abnormal": "Fault"
+        }
+      },
+      "dirty_water_tank": {
+        "name": "Dirty water tank",
+        "state": {
+          "normal": "OK",
+          "full_or_missing": "Full or missing",
+          "abnormal": "Fault"
+        }
+      },
+      "detergent": {
+        "name": "Detergent",
+        "state": {
+          "ok": "OK",
+          "not_installed": "Missing",
+          "empty": "Empty",
+          "running_out": "Running low",
+          "not_used": "Not used"
+        }
+      },
+      "dust_box": {
+        "name": "Dust box",
+        "state": {
+          "normal": "OK",
+          "not_installed": "Missing",
+          "abnormal": "Fault",
+          "clean_suggested": "Please empty"
+        }
+      },
+      "dust_bag": {
+        "name": "Dust bag",
+        "state": {
+          "ok": "OK",
+          "not_installed": "Missing",
+          "replace_suggested": "Replace",
+          "abnormal": "Fault"
+        }
+      },
+      "station_bag": {
+        "name": "Station dust bag",
+        "state": {
+          "ok": "OK",
+          "not_installed": "Missing",
+          "replace_suggested": "Replace",
+          "abnormal": "Fault"
+        }
       }
     },
     "vacuum": {

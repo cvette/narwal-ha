@@ -174,8 +174,9 @@ def status_payload(
     mop: int = 2,
     charging: int = 2,
     errors: tuple[int, ...] = (),
+    extra: dict[int, int] | None = None,
 ) -> bytes:
-    """A RobotBaseStatus push body."""
+    """A RobotBaseStatus push body; `extra` adds varint fields (station states)."""
     w = Writer()
     for e in errors:
         w.varint(1, e, force=True)
@@ -185,6 +186,8 @@ def status_payload(
         tw.varint(num, int(value), force=True)
     w.message(3, tw)
     w.varint(26, fan).varint(29, mop).varint(30, 1).varint(44, 1).varint(47, charging)
+    for num, value in (extra or {}).items():
+        w.varint(num, value, force=True)
     return bytes(w)
 
 

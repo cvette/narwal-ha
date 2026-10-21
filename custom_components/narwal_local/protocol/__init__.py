@@ -28,6 +28,7 @@ from .enums import (
     ServiceResult,
     TaskType,
 )
+from .errors import ERROR_CATEGORIES, error_category, error_hex
 from .map import DisplayMap, MapInfo, Pose, Room, decode_display_map, decode_get_map_response
 from .models import (
     Activity,
@@ -45,6 +46,7 @@ from .models import (
 from .render import MapRenderer, add_labels, add_robot, add_room_labels, render_png
 
 __all__ = [
+    "ERROR_CATEGORIES",
     "TOPIC_CLEAN_REPORT",
     "TOPIC_DISPLAY_MAP",
     "TOPIC_ROBOT_BASE_STATUS",
@@ -89,5 +91,7 @@ __all__ = [
     "decode_get_map_response",
     "decode_robot_base_status",
     "decode_working_status",
+    "error_category",
+    "error_hex",
     "render_png",
 ]

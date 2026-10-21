@@ -16,6 +16,7 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from .coordinator import NarwalConfigEntry, NarwalCoordinator, NarwalData
 from .entity import NarwalEntity
 from .protocol import ChargingStatus
+from .protocol.enums import CleanWaterTankState, DetergentState, SewageTankState
 
 PARALLEL_UPDATES = 0
 
@@ -23,9 +24,31 @@ PARALLEL_UPDATES = 0
 @dataclass(frozen=True, kw_only=True)
 class NarwalBinarySensorDescription(BinarySensorEntityDescription):
     value_fn: Callable[[NarwalData], bool | None]
+    exists_fn: Callable[[NarwalData], bool] = lambda _: True
 
 
 BINARY_SENSORS: tuple[NarwalBinarySensorDescription, ...] = (
+    NarwalBinarySensorDescription(
+        key="clean_water_empty",
+        translation_key="clean_water_empty",
+        device_class=BinarySensorDeviceClass.PROBLEM,
+        value_fn=lambda d: d.status.clean_water is CleanWaterTankState.EMPTY,
+        exists_fn=lambda d: d.status.has_field(23),
+    ),
+    NarwalBinarySensorDescription(
+        key="dirty_water_full",
+        translation_key="dirty_water_full",
+        device_class=BinarySensorDeviceClass.PROBLEM,
+        value_fn=lambda d: d.status.dirty_water is SewageTankState.FULL_OR_MISSING,
+        exists_fn=lambda d: d.status.has_field(24),
+    ),
+    NarwalBinarySensorDescription(
+        key="detergent_low",
+        translation_key="detergent_low",
+        device_class=BinarySensorDeviceClass.PROBLEM,
+        value_fn=lambda d: d.status.detergent in (DetergentState.EMPTY, DetergentState.RUNNING_OUT),
+        exists_fn=lambda d: d.status.has_field(12),
+    ),
     NarwalBinarySensorDescription(
         key="charging",
         device_class=BinarySensorDeviceClass.BATTERY_CHARGING,
@@ -50,7 +73,9 @@ async def async_setup_entry(
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     coordinator = entry.runtime_data
-    async_add_entities(NarwalBinarySensor(coordinator, d) for d in BINARY_SENSORS)
+    async_add_entities(
+        NarwalBinarySensor(coordinator, d) for d in BINARY_SENSORS if d.exists_fn(coordinator.data)
+    )
 
 
 class NarwalBinarySensor(NarwalEntity, BinarySensorEntity):

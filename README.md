@@ -36,6 +36,9 @@ Assistant `config/custom_components/` folder and restart.
 | `sensor.narwal_current_room` | the room the robot is in, from its live position |
 | `sensor.narwal_last_clean`, `_last_clean_area`, `_last_clean_duration` | end time, area and duration of the last finished clean (from the robot's clean report; kept across restarts) |
 | `sensor.narwal_maintenance_due`, `_replacement_due` | number of due items, list in attribute `items` |
+| `sensor.narwal_error` | the current error in plain words (*Robot stuck*, *Side brush blocked*, *Dirty water tank full or missing*, …); attributes `codes` (hex) and `categories` |
+| `sensor.narwal_clean_water_tank`, `_dirty_water_tank`, `_detergent`, `_dust_box`, `_station_dust_bag`, `_dust_bag` | station and robot parts: OK, empty, missing, running low, please empty / replace, fault (only those your robot reports) |
+| `binary_sensor.narwal_clean_water_empty`, `_dirty_water_full`, `_detergent_low` | problem sensors for notifications |
 | `sensor.narwal_charging_status`, `_error_code` | diagnostics |
 | `binary_sensor.narwal_charging`, `_maintenance_needed` | |
 | `select.narwal_mop_humidity` | dry / normal / wet |
@@ -104,6 +107,12 @@ mop humidity and the mode from `select.narwal_cleaning_mode`. If rooms change
 in the app (renamed, split, merged), Home Assistant shows a repair asking you
 to update the mapping.
 
+Error codes are grouped into about 30 categories with this project's own
+wording. The code table comes from the Narwal app, which ships it for one
+model (J4); codes follow the firmware modules and are largely shared between
+models. A code that is not in the table shows as *Unknown error* with the code
+in the `codes` attribute.
+
 ## Limitations
 
 - **Whole-home cleans** are sent as "every room of the current map" (the robot
@@ -123,9 +132,9 @@ to update the mapping.
 
 ## Roadmap
 
-1. Station status as sensors (clean water, dirty water, dust bag, detergent).
-2. Readable error messages instead of codes.
-3. Discovery of the robot on the network (no IP to type in).
+1. Discovery of the robot on the network (no IP to type in).
+2. An event when a clean finishes (area, duration) for automations.
+3. More settings: do-not-disturb, volume, station automation.
 
 ## Development
 
@@ -140,6 +149,12 @@ the robot (only `aiohttp`), independent of Home Assistant:
 | `models.py` | status, working status, device info, features, consumables, firmware |
 | `map.py` | `/map/get_map` decoding: grid, rooms, doors, carpets, forbidden zones |
 | `render.py` | map → PNG with the standard library; icons, labels, robot and path with Pillow (`MapRenderer` caches per map) |
+
+### Error codes
+
+`scripts/build_error_codes.py <en-US.json>` rebuilds
+`protocol/assets/errors.json` (code → category) from an error table of the
+decompiled app. Only the mapping is stored; the texts are in the translations.
 
 ### Recording a session
 
