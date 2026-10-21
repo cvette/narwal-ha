@@ -23,9 +23,13 @@ from protocol.enums import (
 from protocol.map import (
     CELL_UNKNOWN,
     CELL_WALL,
+    FLAG_BLOCKED,
+    FLAG_CARPET,
+    FLAG_FREE,
     CellInt,
     CellPoint,
     MapInfo,
+    decode_display_map,
     decode_get_map_response,
     decode_static_map_payload,
 )
@@ -178,6 +182,21 @@ def test_camera_detections(live_map: MapInfo) -> None:
     assert live_map.room_name(live_map.room_at(dirt.x, dirt.y)) == "Kitchen"
 
 
+def test_cell_flags(live_map: MapInfo) -> None:
+    flags = live_map.flag_grid()
+    rooms = live_map.room_grid()
+    w = live_map.width
+    assert len(flags) == len(rooms)
+    assert flags[50 * w + 110] == 0, "unknown cells (outside the house) have no flags"
+    assert flags[9 * w + 30] == 0x28, "walls"
+    assert flags[40 * w + 30] == FLAG_FREE, "plain floor"
+    assert flags[25 * w + 25] == FLAG_FREE | FLAG_CARPET, "carpet"
+    assert flags[80 * w + 66] == FLAG_BLOCKED, "wardrobe strip"
+    assert rooms[80 * w + 66] == 4, "blocked cells keep their room"
+    blocked = sum(1 for f in flags if f & FLAG_BLOCKED)
+    assert blocked == 6 * 20
+
+
 def test_room_grid_is_cached(live_map: MapInfo) -> None:
     first = live_map.room_grid()
     assert live_map.room_grid() is first, "second call must not decode again"
@@ -202,6 +221,21 @@ def test_room_lookups_are_fast(live_map: MapInfo) -> None:
 
 def test_room_at_outside_map(live_map: MapInfo) -> None:
     assert live_map.room_at(-1000.0, -1000.0) is None
+
+
+def test_display_map() -> None:
+    def pose(x: float, y: float, theta: float) -> Writer:
+        return Writer().message(1, Writer().float_(1, x).float_(2, y)).float_(2, theta)
+
+    body = bytes(
+        Writer().message(1, pose(3.25, -27.75, -1.25)).message(2, Writer().varint(1, 1))
+        .varint(3, 172).message(5, pose(-2.0, 9.5, -1.5)).varint(10, 1792598775412)
+    )  # fmt: skip
+    dm = decode_display_map(body)
+    assert (dm.robot.x, dm.robot.y, dm.robot.theta) == (3.25, -27.75, -1.25)
+    assert (dm.dock.x, dm.dock.y) == (-2.0, 9.5)
+    assert dm.timestamp_ms == 1792598775412
+    assert decode_display_map(b"").robot is None
 
 
 def test_empty_response() -> None:

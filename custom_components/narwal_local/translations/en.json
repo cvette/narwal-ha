@@ -108,9 +108,6 @@
       "cleaning_time": {
         "name": "Cleaning time"
       },
-      "remaining_time": {
-        "name": "Remaining time"
-      },
       "current_room": {
         "name": "Current room"
       },
@@ -128,6 +125,15 @@
       },
       "last_detected": {
         "name": "Last detected"
+      },
+      "last_clean_end": {
+        "name": "Last clean"
+      },
+      "last_clean_area": {
+        "name": "Last clean area"
+      },
+      "last_clean_duration": {
+        "name": "Last clean duration"
       }
     },
     "vacuum": {

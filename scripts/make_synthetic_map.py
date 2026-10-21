@@ -54,8 +54,12 @@ OBSTACLES = [  # id, ObstacleLabel, col, row
 DIRT = [(1, 1, 90.0, 15.0, 2)]  # id, LIQUID_MANY, col, row, CLEANED (kitchen)
 TASK_ID = 1791364633432638116
 
-WALL = 0x01  # room 0 with a flag bit: wall/obstacle
-ROOM_FLAGS = 0x02
+# Cell flags as on a real robot (protocol/map.py FLAG_*).
+WALL = 0x28
+FREE = 0x01
+CARPET = 0x04
+BLOCKED = 0x10
+BLOCKED_RECT = (64, 70, 69, 89)  # display cells: a wardrobe strip in the bedroom
 
 
 def grid() -> list[int]:
@@ -67,10 +71,18 @@ def grid() -> list[int]:
     for rid, (_name, c0, r0, c1, r1) in ROOMS.items():
         for c in range(c0, c1 + 1):
             for r in range(r0, r1 + 1):
-                cells[r * WIDTH + c] = rid << 8 | ROOM_FLAGS
+                cells[r * WIDTH + c] = rid << 8 | FREE
     for a, _b, gap in DOORS:  # open the wall in the doorway
         for c, r in gap:
-            cells[r * WIDTH + c] = a << 8 | ROOM_FLAGS
+            cells[r * WIDTH + c] = a << 8 | FREE
+    for c0, r0, c1, r1 in CARPETS.values():
+        for c in range(c0, c1 + 1):
+            for r in range(r0, r1 + 1):
+                cells[r * WIDTH + c] |= CARPET
+    c0, r0, c1, r1 = BLOCKED_RECT
+    for c in range(c0, c1 + 1):
+        for r in range(r0, r1 + 1):
+            cells[r * WIDTH + c] = (cells[r * WIDTH + c] & ~0xFF) | BLOCKED
     return cells
 
 

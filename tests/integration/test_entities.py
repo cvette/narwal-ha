@@ -74,7 +74,9 @@ async def test_static_sensors(hass: HomeAssistant, init_integration) -> None:
     assert hass.states.get("binary_sensor.narwal_charging").state == STATE_OFF
     # Nothing has been cleaned since setup.
     assert hass.states.get("sensor.narwal_cleaned_area").state == "unknown"
-    assert hass.states.get("sensor.narwal_current_room").state == "unknown"
+    # Docked: the room of the robot's saved position, which is the dock.
+    assert hass.states.get("sensor.narwal_current_room").state == "Living room"
+    assert hass.states.get("sensor.narwal_remaining_time") is None, "retired in 0.4.0"
 
 
 async def test_pushes_update_cleaning_sensors(
@@ -92,8 +94,9 @@ async def test_pushes_update_cleaning_sensors(
     assert hass.states.get("sensor.narwal_cleaning_progress").state == "37.0"
     assert hass.states.get("sensor.narwal_cleaned_area").state == "12.5"
     assert hass.states.get("sensor.narwal_cleaning_time").state == "10.0"
-    assert hass.states.get("sensor.narwal_remaining_time").state == "15.0"
-    assert hass.states.get("sensor.narwal_current_room").state == "Hallway"
+    # The robot's zone id (3 = Hallway) is ignored: it runs ahead of the robot.
+    # Without a live position the room stays the one of the last known pose.
+    assert hass.states.get("sensor.narwal_current_room").state == "Living room"
 
     robot.push("/status/robot_base_status", status_payload({1: TaskType.SWEEP_AND_MOP, 6: 1}))
     await hass.async_block_till_done()

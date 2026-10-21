@@ -11,11 +11,14 @@ import pytest
 from protocol.enums import ForbiddenType
 from protocol.map import ForbiddenArea, MapInfo, decode_get_map_response
 from protocol.enums import ObstacleLabel
+from protocol.map import FLAG_BLOCKED
 from protocol.render import (
     Theme,
     _overlaps,
     add_labels,
+    add_robot,
     add_room_labels,
+    blocked_color,
     furniture_corners,
     render_png,
     room_color,
@@ -77,7 +80,9 @@ def test_uncropped_size_and_room_colours(live_map: MapInfo) -> None:
         col, row = idx % live_map.width, idx // live_map.width
         x, y = col * scale, (live_map.height - 1 - row) * scale  # flipped
         checked += 1
-        matched += pixel(width, pixels, x, y) == room_color(rid)
+        flags = live_map.flag_grid()[idx]
+        expected = blocked_color(rid, Theme()) if flags & FLAG_BLOCKED else room_color(rid)
+        matched += pixel(width, pixels, x, y) == expected
     assert checked > 50
     assert matched == checked
 
@@ -122,6 +127,41 @@ def test_room_labels_avoid_furniture(live_map: MapInfo) -> None:
             rows = [p.row for p in corners]
             inside = min(cols) <= col + 0.5 <= max(cols) and min(rows) <= row + 0.5 <= max(rows)
             assert not inside, f"room {rid} label sits on furniture {f.id}"
+
+
+def test_robot_and_path_overlay(live_map: MapInfo) -> None:
+    pil = pytest.importorskip("PIL.Image")
+    from io import BytesIO
+
+    from protocol.map import Pose
+
+    theme = Theme()
+    png, vp = render_png(live_map, 4)
+    robot = Pose(5.0, -10.0, 0.0)  # display cell (45, 20): living room
+    path = [(-5.0, -10.0), (0.0, -10.0), (5.0, -10.0)]
+    out = add_robot(png, live_map, vp, robot, path, theme)
+    assert out != png
+    img = pil.open(BytesIO(out)).convert("RGB")
+    c = live_map.border_point_to_cell(robot.x, robot.y)
+    x, y = vp.corner(c.col, c.row)
+    # Robot colour beside the white heading line, which points right (theta 0).
+    assert img.getpixel((round(x), round(y) + 5)) == theme.robot
+    assert add_robot(png, live_map, vp, None, []) == png, "nothing to draw"
+
+
+def test_map_renderer_frames(live_map: MapInfo) -> None:
+    pytest.importorskip("PIL")
+    from protocol.map import Pose
+    from protocol.render import MapRenderer
+
+    renderer = MapRenderer(live_map, 4)
+    static = renderer.frame()
+    assert renderer.frame() is static, "static frame is cached"
+    png, vp = render_png(live_map, 4)
+    assert static == add_labels(png, live_map, vp, icons=True), "same as the one-off render"
+    moving = renderer.frame(Pose(5.0, -10.0, 0.0), [(-5.0, -10.0), (5.0, -10.0)])
+    assert moving != static
+    assert decode_png_any(moving)[:2] == renderer.viewport.size
 
 
 def test_box_overlap() -> None:
@@ -187,6 +227,18 @@ def test_furniture_corners_follow_angle(live_map: MapInfo) -> None:
     turned = replace(sofa, angle=90.0)
     cols = sorted(round(p.col, 6) for p in furniture_corners(live_map, turned))
     assert (cols[0], cols[-1]) == (26.0, 34.0), "90° swaps width and height"
+
+
+def test_blocked_cells_are_darker(live_map: MapInfo) -> None:
+    theme = Theme()
+    png, vp = render_png(live_map, 1, crop=False, theme=theme)
+    width, _, pixels = decode_png(png)
+    # Bedroom (room 4) strip at display cells 64..69 x 70..89 is blocked.
+    col, row = 66, 80
+    y = live_map.height - 1 - row
+    assert pixel(width, pixels, col, y) == blocked_color(4, theme)
+    assert pixel(width, pixels, 40, live_map.height - 1 - 65) == room_color(4)
+    assert blocked_color(4, theme) == tuple(round(c * 0.6) for c in room_color(4))
 
 
 def test_forbidden_zone_is_drawn() -> None:

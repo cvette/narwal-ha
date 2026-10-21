@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
-from collections.abc import Awaitable
+import asyncio
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field, replace
 from datetime import datetime
 import logging
+import math
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
@@ -19,13 +21,19 @@ from .const import (
     DOMAIN,
     KEEPALIVE_INTERVAL,
     MAP_INTERVAL,
+    PATH_MAX_POINTS,
+    PATH_MIN_STEP,
     POLL_INTERVAL,
+    RECONNECT_DELAYS,
     REPORT_SECONDS,
 )
 from .map_objects import ObjectNames
 from .protocol import (
+    TOPIC_CLEAN_REPORT,
+    TOPIC_DISPLAY_MAP,
     TOPIC_ROBOT_BASE_STATUS,
     TOPIC_WORKING_STATUS,
+    CleanReport,
     ConsumableInfo,
     DeviceInfo,
     FeatureList,
@@ -35,8 +43,11 @@ from .protocol import (
     NarwalCommandError,
     NarwalError,
     NarwalRobot,
+    Pose,
     RobotBaseStatus,
     WorkingStatus,
+    decode_clean_report,
+    decode_display_map,
     decode_robot_base_status,
     decode_working_status,
 )
@@ -54,6 +65,7 @@ class NarwalData:
     working: WorkingStatus | None = None
     consumables: ConsumableInfo | None = None
     map: MapInfo | None = None
+    last_report: CleanReport | None = None
     names: ObjectNames = field(default_factory=ObjectNames)
 
 
@@ -64,6 +76,18 @@ class NarwalStatic:
     device: DeviceInfo
     features: FeatureList
     firmware: FirmwareVersion | None
+
+
+@dataclass(slots=True)
+class LiveState:
+    """Robot position from display_map pushes, about once a second while the
+    robot is active. Kept outside NarwalData so a moving robot does not make
+    every entity write its state each second; entities that care subscribe
+    with NarwalCoordinator.async_add_live_listener."""
+
+    robot: Pose | None = None
+    path: list[tuple[float, float]] = field(default_factory=list)
+    version: int = 0
 
 
 class NarwalCoordinator(DataUpdateCoordinator[NarwalData]):
@@ -89,8 +113,11 @@ class NarwalCoordinator(DataUpdateCoordinator[NarwalData]):
         self.robot = robot
         self.static = static
         self.names = names or ObjectNames()
+        self.live = LiveState()
+        self._live_listeners: list[Callable[[], None]] = []
         self._consumables_due = dt_util.utcnow()
         self._map_due = dt_util.utcnow()
+        self._reconnecting = False
 
     @property
     def device_id(self) -> str:
@@ -127,37 +154,101 @@ class NarwalCoordinator(DataUpdateCoordinator[NarwalData]):
                 translation_key="communication_error",
                 translation_placeholders={"error": str(err)},
             ) from err
+        self._track_clean_start(previous.status if previous else None, status)
         return NarwalData(
             status=status,
             working=previous.working if previous else None,
             consumables=consumables,
             map=map_info,
+            last_report=previous.last_report if previous else None,
             names=self.names,
         )
+
+    # --- pushes -----------------------------------------------------------
 
     @callback
     def _handle_push(self, msg: Message) -> None:
         if self.data is None:
             return
         try:
-            if msg.topic == TOPIC_ROBOT_BASE_STATUS:
+            if msg.topic == TOPIC_DISPLAY_MAP:
+                self._handle_display_map(msg.payload)
+            elif msg.topic == TOPIC_ROBOT_BASE_STATUS:
                 status = decode_robot_base_status(msg.payload)
                 # The push carries no result field; keep the last one.
                 status.result = self.data.status.result
+                self._track_clean_start(self.data.status, status)
                 self.async_set_updated_data(replace(self.data, status=status))
             elif msg.topic == TOPIC_WORKING_STATUS:
                 working = decode_working_status(msg.payload)
                 self.async_set_updated_data(replace(self.data, working=working))
+            elif msg.topic == TOPIC_CLEAN_REPORT:
+                report = decode_clean_report(msg.payload)
+                self.async_set_updated_data(replace(self.data, last_report=report))
         except ValueError:
             _LOGGER.debug("Undecodable push on %s: %s", msg.topic, msg.payload.hex())
 
     @callback
+    def _handle_display_map(self, payload: bytes) -> None:
+        robot = decode_display_map(payload).robot
+        if robot is None:
+            return
+        live = self.live
+        point = (robot.x, robot.y)
+        if not live.path or math.dist(live.path[-1], point) >= PATH_MIN_STEP:
+            live.path.append(point)
+            if len(live.path) > PATH_MAX_POINTS:
+                del live.path[: len(live.path) - PATH_MAX_POINTS]
+        if robot == live.robot:
+            return
+        live.robot = robot
+        live.version += 1
+        for listener in list(self._live_listeners):
+            listener()
+
+    @callback
+    def _track_clean_start(self, old: RobotBaseStatus | None, new: RobotBaseStatus) -> None:
+        """Start a fresh path when a cleaning job begins."""
+        if new.in_clean_task and (old is None or not old.in_clean_task):
+            self.live.path.clear()
+            self.live.version += 1
+
+    @callback
+    def async_add_live_listener(self, listener: Callable[[], None]) -> Callable[[], None]:
+        """Call `listener` whenever the robot moves. Returns an unsubscribe."""
+        self._live_listeners.append(listener)
+        return lambda: self._live_listeners.remove(listener)
+
+    # --- connection -------------------------------------------------------
+
+    @callback
     def _handle_disconnect(self) -> None:
-        _LOGGER.debug("Connection to %s lost", self.robot.host)
-        self.async_set_update_error(UpdateFailed("connection lost"))
+        """The robot drops the connection now and then (seen five times in a
+        20-minute clean); reconnect quietly and only report the entities
+        unavailable when that fails."""
+        if self._reconnecting:
+            return
+        self._reconnecting = True
         self.config_entry.async_create_background_task(
-            self.hass, self.async_request_refresh(), "narwal_local reconnect"
+            self.hass, self._async_reconnect(), "narwal_local reconnect"
         )
+
+    async def _async_reconnect(self) -> None:
+        try:
+            for delay in RECONNECT_DELAYS:
+                if delay:
+                    await asyncio.sleep(delay)
+                try:
+                    await self.robot.connect()
+                    await self.robot.activate_reporting(REPORT_SECONDS)
+                except NarwalError as err:
+                    _LOGGER.debug("Reconnect to %s failed: %s", self.robot.host, err)
+                    continue
+                _LOGGER.debug("Reconnected to %s", self.robot.host)
+                return
+            self.async_set_update_error(UpdateFailed("connection lost"))
+        finally:
+            self._reconnecting = False
 
     async def _async_keepalive(self, _now: datetime) -> None:
         if not self.robot.connected:

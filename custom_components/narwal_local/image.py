@@ -1,29 +1,38 @@
-"""The map as an image entity."""
+"""The map as an image entity, with the robot's live position."""
 
 from __future__ import annotations
 
+from collections.abc import Callable, Sequence
+from datetime import datetime
 from typing import Any
 
 from homeassistant.components.image import ImageEntity
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
+from homeassistant.helpers.event import async_call_later
 from homeassistant.util import dt as dt_util
 
+from .const import LIVE_MAP_INTERVAL
 from .coordinator import NarwalConfigEntry, NarwalCoordinator
 from .entity import NarwalEntity
 from .map_objects import dirt_list, dock_room, furniture_list, obstacle_list
-from .protocol import MapInfo, add_labels, render_png
+from .protocol import Activity, MapInfo, MapRenderer, Pose
 
 PARALLEL_UPDATES = 0
 
 MAP_SCALE = 4  # pixels per map cell
 
+# While these are active the robot is drawn with its current path.
+ACTIVE = frozenset({Activity.CLEANING, Activity.PAUSED, Activity.RETURNING, Activity.ERROR})
 
-def render_map(mi: MapInfo) -> bytes:
-    """Render with room names and icons for furniture, detected objects, dirt
-    and the dock. CPU-bound: call it in the executor."""
-    png, viewport = render_png(mi, MAP_SCALE)
-    return add_labels(png, mi, viewport, icons=True)
+
+def render_map(
+    mi: MapInfo,
+    robot: Pose | None = None,
+    path: Sequence[tuple[float, float]] = (),
+) -> bytes:
+    """One-off render (diagnostics, scripts); the entity keeps a MapRenderer."""
+    return MapRenderer(mi, MAP_SCALE).frame(robot, path)
 
 
 async def async_setup_entry(
@@ -36,11 +45,11 @@ async def async_setup_entry(
 
 class NarwalMapImage(NarwalEntity, ImageEntity):
     """Rooms, walls, doors, carpets, no-go zones, furniture, camera
-    detections and the dock.
+    detections, the dock and, during a clean, the robot and its path.
 
-    The PNG is rendered on first request after the map changed and cached; a
-    map counts as changed when its id, version, edit version, room names,
-    furniture, detections or dock change.
+    The PNG is rendered on request and cached until the map or the robot's
+    position changes; position changes refresh the image at most every
+    LIVE_MAP_INTERVAL.
     """
 
     _attr_translation_key = "map"
@@ -51,8 +60,19 @@ class NarwalMapImage(NarwalEntity, ImageEntity):
         ImageEntity.__init__(self, hass)
         self._map_key = self._current_key()
         self._png: bytes | None = None
+        self._png_key: tuple | None = None
+        self._renderer: MapRenderer | None = None
+        self._renderer_key: tuple | None = None
+        self._last_live_bump: datetime | None = None
+        self._pending_bump: Callable[[], None] | None = None
+        self._robot_visible = self._overlay()[0] is not None
         if self._map_key is not None:
             self._attr_image_last_updated = dt_util.utcnow()
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        self.async_on_remove(self.coordinator.async_add_live_listener(self._handle_live))
+        self.async_on_remove(self._cancel_pending_bump)
 
     def _current_key(self) -> tuple | None:
         mi = self.coordinator.data.map
@@ -67,25 +87,74 @@ class NarwalMapImage(NarwalEntity, ImageEntity):
             mi.station,
         )
 
+    def _overlay(self) -> tuple[Pose | None, tuple[tuple[float, float], ...]]:
+        """What to draw on top of the map right now."""
+        if self.coordinator.data.status.activity not in ACTIVE:
+            return None, ()
+        live = self.coordinator.live
+        return live.robot, tuple(live.path)
+
     @property
     def available(self) -> bool:
         return super().available and self._map_key is not None
 
     @callback
+    def _bump(self) -> None:
+        self._attr_image_last_updated = dt_util.utcnow()
+
+    @callback
     def _handle_coordinator_update(self) -> None:
+        # Only map changes and the robot appearing or disappearing (a clean
+        # starting or ending) refresh the image here; status pushes arrive
+        # every second during a clean, movement goes through _handle_live.
         key = self._current_key()
-        if key != self._map_key:
+        visible = self._overlay()[0] is not None
+        if key != self._map_key or visible != self._robot_visible:
             self._map_key = key
-            self._png = None
-            self._attr_image_last_updated = dt_util.utcnow()
+            self._robot_visible = visible
+            self._bump()
         super()._handle_coordinator_update()
+
+    @callback
+    def _handle_live(self) -> None:
+        """The robot moved: refresh the image, at most every LIVE_MAP_INTERVAL."""
+        if self._overlay()[0] is None or self._pending_bump is not None:
+            return
+        now = dt_util.utcnow()
+        if self._last_live_bump is None or now - self._last_live_bump >= LIVE_MAP_INTERVAL:
+            self._live_bump()
+            return
+        wait = (self._last_live_bump + LIVE_MAP_INTERVAL - now).total_seconds()
+        self._pending_bump = async_call_later(self.hass, wait, self._live_bump)
+
+    @callback
+    def _live_bump(self, _now: datetime | None = None) -> None:
+        self._pending_bump = None
+        self._last_live_bump = dt_util.utcnow()
+        self._robot_visible = self._overlay()[0] is not None
+        self._bump()
+        self.async_write_ha_state()
+
+    @callback
+    def _cancel_pending_bump(self) -> None:
+        if self._pending_bump is not None:
+            self._pending_bump()
+            self._pending_bump = None
 
     async def async_image(self) -> bytes | None:
         mi = self.coordinator.data.map
         if mi is None or self._map_key is None:
             return None
-        if self._png is None:
-            self._png = await self.hass.async_add_executor_job(render_map, mi)
+        robot, path = self._overlay()
+        key = (self._map_key, (robot, path))
+        if self._png is not None and self._png_key == key:
+            return self._png
+        if self._renderer is None or self._renderer_key != self._map_key:
+            # Base map, labels and icons: once per map version.
+            self._renderer = await self.hass.async_add_executor_job(MapRenderer, mi, MAP_SCALE)
+            self._renderer_key = self._map_key
+        self._png = await self.hass.async_add_executor_job(self._renderer.frame, robot, path)
+        self._png_key = key
         return self._png
 
     @property

@@ -5,6 +5,7 @@ Independent of Home Assistant so it can move to its own package later.
 """
 
 from .client import (
+    TOPIC_CLEAN_REPORT,
     TOPIC_DISPLAY_MAP,
     TOPIC_ROBOT_BASE_STATUS,
     TOPIC_WORKING_STATUS,
@@ -26,28 +27,33 @@ from .enums import (
     ServiceResult,
     TaskType,
 )
-from .map import MapInfo, Room, decode_get_map_response
+from .map import DisplayMap, MapInfo, Pose, Room, decode_display_map, decode_get_map_response
 from .models import (
     Activity,
+    CleanReport,
     ConsumableInfo,
     DeviceInfo,
     FeatureList,
     FirmwareVersion,
     RobotBaseStatus,
     WorkingStatus,
+    decode_clean_report,
     decode_robot_base_status,
     decode_working_status,
 )
-from .render import add_labels, add_room_labels, render_png
+from .render import MapRenderer, add_labels, add_robot, add_room_labels, render_png
 
 __all__ = [
+    "TOPIC_CLEAN_REPORT",
     "TOPIC_DISPLAY_MAP",
     "TOPIC_ROBOT_BASE_STATUS",
     "TOPIC_WORKING_STATUS",
     "Activity",
     "ChargingStatus",
+    "CleanReport",
     "ConsumableInfo",
     "DeviceInfo",
+    "DisplayMap",
     "FanLevel",
     "FeatureList",
     "FirmwareStatus",
@@ -55,6 +61,7 @@ __all__ = [
     "ForbiddenType",
     "IdleStatus",
     "MapInfo",
+    "MapRenderer",
     "Message",
     "MopHumidity",
     "NarwalClient",
@@ -63,13 +70,17 @@ __all__ = [
     "NarwalError",
     "NarwalRobot",
     "NarwalTimeoutError",
+    "Pose",
     "RobotBaseStatus",
     "Room",
     "ServiceResult",
     "TaskType",
     "WorkingStatus",
     "add_labels",
+    "add_robot",
     "add_room_labels",
+    "decode_clean_report",
+    "decode_display_map",
     "decode_get_map_response",
     "decode_robot_base_status",
     "decode_working_status",

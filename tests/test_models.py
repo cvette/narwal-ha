@@ -15,6 +15,7 @@ from protocol.enums import (
 )
 from protocol.models import (
     Activity,
+    decode_clean_report,
     decode_check_firmware,
     decode_consumable_info,
     decode_device_base_status,
@@ -146,6 +147,42 @@ def _status(task: dict[int, int], *, errors: tuple[int, ...] = (), charging: int
 )
 def test_activity_mapping(task, expected) -> None:
     assert _status(task).activity is expected
+
+
+@pytest.mark.parametrize(
+    ("task", "expected"),
+    [
+        ({1: TaskType.SWEEP_AND_MOP, 6: 16}, Activity.DOCKED),  # dust gathering in the station
+        ({1: TaskType.SWEEP_AND_MOP, 6: 12}, Activity.CLEANING),  # self-check at the start
+        ({1: TaskType.SWEEP_AND_MOP, 6: 11}, Activity.CLEANING),  # departure
+        ({1: TaskType.WASH_AND_DRY_MOP, 12: 4}, Activity.DOCKED),  # drying after the clean
+    ],
+)
+def test_activity_seen_on_a_real_clean(task, expected) -> None:
+    assert _status(task).activity is expected
+
+
+def test_charging_means_docked_even_if_robot_says_cleaning() -> None:
+    """Seen live: ROOM_CLEAN for 4 s while already charging after a wash."""
+    assert _status({1: TaskType.SWEEP_AND_MOP, 6: 7}, charging=ChargingStatus.CHARGING).activity is Activity.DOCKED
+    assert _status({1: TaskType.SWEEP_AND_MOP, 6: 2}, charging=ChargingStatus.CHARGING).activity is Activity.DOCKED
+    assert _status({1: TaskType.SWEEP_AND_MOP, 6: 7}, charging=ChargingStatus.DISCHARGING).activity is Activity.CLEANING
+
+
+def test_in_clean_task() -> None:
+    assert _status({1: TaskType.SWEEP_AND_MOP, 6: 4}).in_clean_task
+    assert not _status({1: TaskType.IDLE, 3: 1}).in_clean_task
+    assert not _status({1: TaskType.WASH_AND_DRY_MOP}).in_clean_task
+
+
+def test_clean_report() -> None:
+    body = bytes(
+        Writer().varint(1, 100).float_(2, 16.0092).varint(3, 1112).varint(4, 1)
+        .varint(6, 1792598354).varint(7, 1792600025).message(12, Writer().varint(1, 1))
+    )  # fmt: skip
+    report = decode_clean_report(body)
+    assert (report.progress, report.duration, report.start, report.end) == (100, 1112, 1792598354, 1792600025)
+    assert abs(report.area - 16.0092) < 1e-4
 
 
 def test_error_wins_over_task() -> None:

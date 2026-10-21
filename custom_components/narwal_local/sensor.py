@@ -4,18 +4,22 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import date, datetime
+from decimal import Decimal
 from typing import Any
 
 from homeassistant.components.sensor import (
+    RestoreSensor,
     SensorDeviceClass,
     SensorEntity,
     SensorEntityDescription,
     SensorStateClass,
 )
 from homeassistant.const import PERCENTAGE, EntityCategory, UnitOfArea, UnitOfTime
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.typing import StateType
+from homeassistant.util import dt as dt_util
 
 from .coordinator import NarwalConfigEntry, NarwalCoordinator, NarwalData
 from .entity import NarwalEntity
@@ -31,12 +35,6 @@ CHARGING_OPTIONS = [c.name.lower() for c in ChargingStatus if c is not ChargingS
 def _enum_state(value: Any, options: list[str]) -> str | None:
     name = getattr(value, "name", None)
     return name.lower() if name and name.lower() in options else None
-
-
-def _current_room(data: NarwalData) -> str | None:
-    if data.working is None or data.map is None or not data.working.cleaning_zone_id:
-        return None
-    return data.map.room_name(data.working.cleaning_zone_id)
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -94,19 +92,6 @@ SENSORS: tuple[NarwalSensorDescription, ...] = (
         value_fn=lambda d: d.working.time_consuming if d.working else None,
     ),
     NarwalSensorDescription(
-        key="remaining_time",
-        translation_key="remaining_time",
-        device_class=SensorDeviceClass.DURATION,
-        native_unit_of_measurement=UnitOfTime.SECONDS,
-        suggested_unit_of_measurement=UnitOfTime.MINUTES,
-        value_fn=lambda d: d.working.remained_time if d.working else None,
-    ),
-    NarwalSensorDescription(
-        key="current_room",
-        translation_key="current_room",
-        value_fn=_current_room,
-    ),
-    NarwalSensorDescription(
         key="maintenance_due",
         translation_key="maintenance_due",
         state_class=SensorStateClass.MEASUREMENT,
@@ -142,13 +127,47 @@ SENSORS: tuple[NarwalSensorDescription, ...] = (
 )
 
 
+# From the clean report pushed when a clean finishes; restored after restarts.
+LAST_CLEAN_SENSORS: tuple[NarwalSensorDescription, ...] = (
+    NarwalSensorDescription(
+        key="last_clean_end",
+        translation_key="last_clean_end",
+        device_class=SensorDeviceClass.TIMESTAMP,
+        value_fn=lambda d: (
+            dt_util.utc_from_timestamp(d.last_report.end)
+            if d.last_report and d.last_report.end
+            else None
+        ),
+    ),
+    NarwalSensorDescription(
+        key="last_clean_area",
+        translation_key="last_clean_area",
+        device_class=SensorDeviceClass.AREA,
+        native_unit_of_measurement=UnitOfArea.SQUARE_METERS,
+        suggested_display_precision=1,
+        value_fn=lambda d: round(d.last_report.area, 2) if d.last_report else None,
+    ),
+    NarwalSensorDescription(
+        key="last_clean_duration",
+        translation_key="last_clean_duration",
+        device_class=SensorDeviceClass.DURATION,
+        native_unit_of_measurement=UnitOfTime.SECONDS,
+        suggested_unit_of_measurement=UnitOfTime.MINUTES,
+        value_fn=lambda d: d.last_report.duration if d.last_report else None,
+    ),
+)
+
+
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: NarwalConfigEntry,
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     coordinator = entry.runtime_data
-    async_add_entities(NarwalSensor(coordinator, description) for description in SENSORS)
+    entities: list[SensorEntity] = [NarwalSensor(coordinator, d) for d in SENSORS]
+    entities += [NarwalRestoreSensor(coordinator, d) for d in LAST_CLEAN_SENSORS]
+    entities.append(NarwalCurrentRoomSensor(coordinator))
+    async_add_entities(entities)
 
 
 class NarwalSensor(NarwalEntity, SensorEntity):
@@ -165,3 +184,58 @@ class NarwalSensor(NarwalEntity, SensorEntity):
     @property
     def extra_state_attributes(self) -> dict[str, Any] | None:
         return self.entity_description.attrs_fn(self.coordinator.data)
+
+
+class NarwalRestoreSensor(NarwalSensor, RestoreSensor):
+    """Keeps its last value across restarts until the robot sends a new one."""
+
+    _restored: StateType | date | datetime | Decimal = None
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        if (last := await self.async_get_last_sensor_data()) is not None:
+            self._restored = last.native_value
+
+    @property
+    def native_value(self) -> StateType | date | datetime | Decimal:
+        value = self.entity_description.value_fn(self.coordinator.data)
+        return value if value is not None else self._restored
+
+
+class NarwalCurrentRoomSensor(NarwalEntity, SensorEntity):
+    """The room the robot is in, from its live position (pushed about once a
+    second while it moves) or, when idle, its last saved position. The
+    robot's own cleaning_zone_id is not used: it runs ahead through rooms the
+    robot is not in."""
+
+    _attr_translation_key = "current_room"
+
+    def __init__(self, coordinator: NarwalCoordinator) -> None:
+        super().__init__(coordinator, "current_room")
+        self._attr_native_value = self._room()
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        self.async_on_remove(self.coordinator.async_add_live_listener(self._update_room))
+
+    def _room(self) -> str | None:
+        mi = self.coordinator.data.map
+        if mi is None:
+            return None
+        pose = self.coordinator.live.robot or mi.robot_pose
+        if pose is None:
+            return None
+        room_id = mi.room_at(pose.x, pose.y)
+        return mi.room_name(room_id) if room_id is not None else None
+
+    @callback
+    def _update_room(self) -> None:
+        room = self._room()
+        if room != self._attr_native_value:  # only write when the room changes
+            self._attr_native_value = room
+            self.async_write_ha_state()
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        self._attr_native_value = self._room()
+        super()._handle_coordinator_update()

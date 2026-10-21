@@ -35,6 +35,14 @@ from .pb import WIRE_FIXED32, WIRE_VARINT, parse, parse_packed_varints, to_int32
 CELL_UNKNOWN = 0
 CELL_WALL = 255
 
+# Cell flags: the low byte of each grid value, read off a real map by
+# comparing each bit with the app's view. Walls carry 0x28.
+FLAG_FREE = 0x01  # floor the robot drives on
+FLAG_OBSTACLE_POINT = 0x02  # scattered points: furniture legs and the like
+FLAG_CARPET = 0x04  # matches the carpet polygons exactly
+FLAG_EDGE = 0x08  # band along walls
+FLAG_BLOCKED = 0x10  # area the robot cannot enter; the app shades it darker
+
 
 @dataclass(slots=True, frozen=True)
 class Point:
@@ -163,7 +171,7 @@ class MapInfo:
     map_data_format: int = 0  # 18
     grid_compressed: bytes = b""  # 17
     grid_raw: bytes = b""
-    # (grid_raw, width, height, room grid); not an init field, so
+    # (grid_raw, width, height, room grid, flag grid); not an init field, so
     # dataclasses.replace() starts a copy with an empty cache.
     _room_grid_cache: tuple | None = field(default=None, init=False, repr=False, compare=False)
 
@@ -218,8 +226,8 @@ class MapInfo:
                     break
         return parse_packed_varints(buf)
 
-    def room_grid(self) -> bytes:
-        """One byte per cell: 0 unknown, 255 wall/obstacle, else room id.
+    def _decoded_grid(self) -> tuple[bytes, bytes]:
+        """(room grid, flag grid), decoded once per grid.
 
         Decoding the packed grid takes tens of milliseconds, and room_at runs
         once per object for every attribute update, so the result is cached
@@ -228,17 +236,27 @@ class MapInfo:
         key = (self.grid_raw, self.width, self.height)
         cached = self._room_grid_cache
         if cached is not None and cached[0] is key[0] and cached[1:3] == key[1:]:
-            return cached[3]
+            return cached[3], cached[4]
         size = self.width * self.height
-        out = bytearray(size)
+        rooms = bytearray(size)
+        flags = bytearray(size)
         for i, v in enumerate(self.grid_cells()[:size]):
             if v == 0:
                 continue
             room = v >> 8
-            out[i] = CELL_WALL if room == 0 else room & 0x3F
-        grid = bytes(out)
-        self._room_grid_cache = (*key, grid)
-        return grid
+            rooms[i] = CELL_WALL if room == 0 else room & 0x3F
+            flags[i] = v & 0xFF
+        result = (bytes(rooms), bytes(flags))
+        self._room_grid_cache = (*key, *result)
+        return result
+
+    def room_grid(self) -> bytes:
+        """One byte per cell: 0 unknown, 255 wall/obstacle, else room id."""
+        return self._decoded_grid()[0]
+
+    def flag_grid(self) -> bytes:
+        """One byte per cell: the cell's flags (FLAG_* constants), 0 if unknown."""
+        return self._decoded_grid()[1]
 
     def to_json(self) -> dict:
         """Browser/HA-friendly view; matches the Go client's MapJSON."""
@@ -524,3 +542,31 @@ def decode_get_map_response(payload: bytes) -> MapInfo:
     mi.result = result
     mi.robot_has_map = has_map
     return mi
+
+
+@dataclass(slots=True, frozen=True)
+class DisplayMap:
+    """/map/display_map, pushed about once a second while the robot is active
+    (after activate_reporting with a displayMap duration).
+
+    robot (field 1) and dock (field 5) are poses in the same border frame as the
+    StaticMapPayload's dock and objects. The push also carries partial map
+    updates and the cleaned track, which are not decoded here.
+    """
+
+    robot: Pose | None = None
+    dock: Pose | None = None
+    timestamp_ms: int = 0  # field 10
+
+
+def decode_display_map(payload: bytes) -> DisplayMap:
+    robot = dock = None
+    ts = 0
+    for f in parse(payload):
+        if f.num == 1 and f.wtype != WIRE_VARINT:
+            robot = _pose(f.data)
+        elif f.num == 5 and f.wtype != WIRE_VARINT:
+            dock = _pose(f.data)
+        elif f.num == 10 and f.wtype == WIRE_VARINT:
+            ts = f.int
+    return DisplayMap(robot, dock, ts)

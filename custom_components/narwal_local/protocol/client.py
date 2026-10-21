@@ -46,6 +46,7 @@ TOPIC_WORKING_STATUS = "/status/working_status"
 TOPIC_DISPLAY_MAP = "/map/display_map"
 TOPIC_DOWNLOAD_STATUS = "/status/download_status"
 TOPIC_UPGRADE_STATUS = "/upgrade/upgrade_status"
+TOPIC_CLEAN_REPORT = "/report/clean_report"
 
 
 class NarwalError(Exception):

@@ -5,6 +5,7 @@ from __future__ import annotations
 from homeassistant.const import CONF_HOST, CONF_PORT, Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .const import DEFAULT_PORT, DOMAIN, REPORT_SECONDS
@@ -55,8 +56,20 @@ async def async_setup_entry(hass: HomeAssistant, entry: NarwalConfigEntry) -> bo
         await robot.close()
         raise
     entry.runtime_data = coordinator
+    _remove_retired_entities(hass, coordinator.device_id)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
+
+
+# Entities earlier versions created that no longer exist (unique-id suffixes).
+RETIRED_SENSORS = ("remaining_time",)  # the robot always reported 0
+
+
+def _remove_retired_entities(hass: HomeAssistant, device_id: str) -> None:
+    registry = er.async_get(hass)
+    for key in RETIRED_SENSORS:
+        if entity_id := registry.async_get_entity_id(Platform.SENSOR, DOMAIN, f"{device_id}_{key}"):
+            registry.async_remove(entity_id)
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: NarwalConfigEntry) -> bool:

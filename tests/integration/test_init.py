@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 from datetime import timedelta
+from unittest.mock import patch
 
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.const import STATE_UNAVAILABLE
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import device_registry as dr, entity_registry as er
 from homeassistant.util import dt as dt_util
 from pytest_homeassistant_custom_component.common import async_fire_time_changed
 
@@ -46,14 +47,30 @@ async def test_setup_retries_when_unreachable(
     assert config_entry.state is ConfigEntryState.SETUP_RETRY
 
 
-async def test_disconnect_marks_unavailable_and_reconnects(
+async def test_short_disconnect_stays_available(
     hass: HomeAssistant, init_integration, robot: FakeRobot
 ) -> None:
-    assert hass.states.get("vacuum.narwal").state == "docked"
-
-    robot.fail_connect = True
+    """The robot drops the connection now and then; a quick reconnect must not
+    flash the entities unavailable."""
+    states: list[str] = []
+    hass.bus.async_listen(
+        "state_changed",
+        lambda e: states.append(e.data["new_state"].state) if e.data["entity_id"] == "vacuum.narwal" else None,
+    )
     robot.drop()
     await hass.async_block_till_done()
+    assert robot.connected, "reconnected"
+    assert STATE_UNAVAILABLE not in states
+    assert hass.states.get("vacuum.narwal").state == "docked"
+
+
+async def test_failed_reconnect_marks_unavailable_then_recovers(
+    hass: HomeAssistant, init_integration, robot: FakeRobot
+) -> None:
+    robot.fail_connect = True
+    with patch("custom_components.narwal_local.coordinator.RECONNECT_DELAYS", (0.0, 0.0, 0.0)):
+        robot.drop()
+        await hass.async_block_till_done()
     assert hass.states.get("vacuum.narwal").state == STATE_UNAVAILABLE
 
     robot.fail_connect = False
@@ -61,6 +78,19 @@ async def test_disconnect_marks_unavailable_and_reconnects(
     await hass.async_block_till_done()
     assert robot.connected
     assert hass.states.get("vacuum.narwal").state == "docked"
+
+
+async def test_retired_remaining_time_sensor_is_removed(
+    hass: HomeAssistant, robot: FakeRobot, config_entry
+) -> None:
+    config_entry.add_to_hass(hass)
+    registry = er.async_get(hass)
+    old = registry.async_get_or_create(
+        "sensor", DOMAIN, f"{DEVICE_ID}_remaining_time", config_entry=config_entry
+    )
+    assert await hass.config_entries.async_setup(config_entry.entry_id)
+    await hass.async_block_till_done()
+    assert registry.async_get(old.entity_id) is None
 
 
 async def test_keepalive_rearms_reporting(hass: HomeAssistant, init_integration, robot: FakeRobot) -> None:

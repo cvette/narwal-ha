@@ -179,6 +179,19 @@ def status_payload(
     return bytes(w)
 
 
+# The synthetic map's border frame: display cell (col, row) = (x + 40, y + 30).
+def display_map_payload(col: float, row: float, theta: float = 0.0) -> bytes:
+    """A /map/display_map push with the robot at a display cell."""
+    point = Writer().float_(1, col - 40).float_(2, row - 30)
+    return bytes(Writer().message(1, Writer().message(1, point).float_(2, theta)).varint(10, 1))
+
+
+def clean_report_payload(area: float, seconds: int, start: int, end: int) -> bytes:
+    return bytes(
+        Writer().varint(1, 100).float_(2, area).varint(3, seconds).varint(6, start).varint(7, end)
+    )
+
+
 def working_payload(progress: float, area: float, seconds: int, remain: int, zone: int) -> bytes:
     return bytes(
         Writer().float_(1, progress).float_(2, area).varint(3, seconds).varint(4, remain).varint(6, zone)
