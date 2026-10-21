@@ -9,6 +9,7 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .const import DEFAULT_PORT, DOMAIN, REPORT_SECONDS
 from .coordinator import NarwalConfigEntry, NarwalCoordinator, NarwalStatic
+from .map_objects import async_load_names
 from .protocol import NarwalError, NarwalRobot
 
 PLATFORMS: list[Platform] = [
@@ -45,7 +46,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: NarwalConfigEntry) -> bo
             translation_placeholders={"host": entry.data[CONF_HOST], "error": str(err)},
         ) from err
 
-    coordinator = NarwalCoordinator(hass, entry, robot, NarwalStatic(device, features, firmware))
+    coordinator = NarwalCoordinator(
+        hass, entry, robot, NarwalStatic(device, features, firmware), await async_load_names(hass)
+    )
     try:
         await coordinator.async_config_entry_first_refresh()
     except ConfigEntryNotReady:

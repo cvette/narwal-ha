@@ -43,9 +43,9 @@ async def async_get_config_entry_diagnostics(
                 "carpets": len(mi.carpets),
                 "forbiddens": len(mi.forbiddens),
                 "station": asdict(mi.station) if mi.station else None,
-                "furniture": furniture_list(mi),
-                "obstacles": obstacle_list(mi),
-                "dirt": dirt_list(mi),
+                "furniture": furniture_list(mi, data.names),
+                "obstacles": obstacle_list(mi, data.names),
+                "dirt": dirt_list(mi, data.names),
             }
             if mi
             else None,

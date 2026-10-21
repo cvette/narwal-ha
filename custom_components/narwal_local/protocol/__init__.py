@@ -38,7 +38,7 @@ from .models import (
     decode_robot_base_status,
     decode_working_status,
 )
-from .render import add_room_labels, render_png
+from .render import add_labels, add_room_labels, render_png
 
 __all__ = [
     "TOPIC_DISPLAY_MAP",
@@ -68,6 +68,7 @@ __all__ = [
     "ServiceResult",
     "TaskType",
     "WorkingStatus",
+    "add_labels",
     "add_room_labels",
     "decode_get_map_response",
     "decode_robot_base_status",

@@ -13,6 +13,8 @@ from protocol.map import ForbiddenArea, MapInfo, decode_get_map_response
 from protocol.enums import ObstacleLabel
 from protocol.render import (
     Theme,
+    _overlaps,
+    add_labels,
     add_room_labels,
     furniture_corners,
     render_png,
@@ -107,6 +109,38 @@ def test_room_labels_change_pixels_not_size(live_map: MapInfo) -> None:
     assert labelled != png
     width, height, _ = decode_png_any(labelled)
     assert (width, height) == vp.size
+
+
+def test_room_labels_avoid_furniture(live_map: MapInfo) -> None:
+    """The bedroom's centroid lies on the bed; its label must move off it."""
+    grid = live_map.room_grid()
+    for rid, (col, row) in room_label_positions(live_map).items():
+        assert grid[row * live_map.width + col] == rid
+        for f in live_map.furniture:
+            corners = furniture_corners(live_map, f)
+            cols = [p.col for p in corners]
+            rows = [p.row for p in corners]
+            inside = min(cols) <= col + 0.5 <= max(cols) and min(rows) <= row + 0.5 <= max(rows)
+            assert not inside, f"room {rid} label sits on furniture {f.id}"
+
+
+def test_box_overlap() -> None:
+    assert _overlaps((0, 0, 10, 10), (5, 5, 15, 15))
+    assert not _overlaps((0, 0, 10, 10), (10, 0, 20, 10)), "touching edges do not overlap"
+    assert not _overlaps((0, 0, 10, 10), (0, 11, 10, 20))
+
+
+def test_object_names_are_written(live_map: MapInfo) -> None:
+    pytest.importorskip("PIL")
+    png, vp = render_png(live_map, 4)
+    rooms_only = add_room_labels(png, live_map, vp)
+    named = add_labels(
+        png, live_map, vp,
+        obstacle_name=lambda label: label.name.title(),
+        furniture_name=lambda ftype: ftype.name.title(),
+    )  # fmt: skip
+    assert named != rooms_only
+    assert decode_png_any(named)[:2] == vp.size
 
 
 def decode_png_any(data: bytes) -> tuple[int, int, bytes]:

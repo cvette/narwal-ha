@@ -12,7 +12,7 @@ from homeassistant.util import dt as dt_util
 from .coordinator import NarwalConfigEntry, NarwalCoordinator
 from .entity import NarwalEntity
 from .map_objects import dirt_list, dock_room, furniture_list, obstacle_list
-from .protocol import MapInfo, add_room_labels, render_png
+from .protocol import MapInfo, add_labels, render_png
 
 PARALLEL_UPDATES = 0
 
@@ -20,9 +20,10 @@ MAP_SCALE = 4  # pixels per map cell
 
 
 def render_map(mi: MapInfo) -> bytes:
-    """Render with room names. CPU-bound: call it in the executor."""
+    """Render with room names and icons for furniture, detected objects, dirt
+    and the dock. CPU-bound: call it in the executor."""
     png, viewport = render_png(mi, MAP_SCALE)
-    return add_room_labels(png, mi, viewport)
+    return add_labels(png, mi, viewport, icons=True)
 
 
 async def async_setup_entry(
@@ -92,11 +93,12 @@ class NarwalMapImage(NarwalEntity, ImageEntity):
         mi = self.coordinator.data.map
         if mi is None:
             return None
+        names = self.coordinator.data.names
         return {
             "map_id": mi.map_id,
             "rooms": [{"id": r.id, "name": r.name} for r in mi.rooms],
             "dock_room": dock_room(mi),
-            "furniture": furniture_list(mi),
-            "obstacles": obstacle_list(mi),
-            "dirt": dirt_list(mi),
+            "furniture": furniture_list(mi, names),
+            "obstacles": obstacle_list(mi, names),
+            "dirt": dirt_list(mi, names),
         }

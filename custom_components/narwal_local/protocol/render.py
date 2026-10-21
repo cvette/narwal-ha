@@ -9,13 +9,15 @@ standard library.
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Sequence
+from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass
 import math
 import struct
+from typing import Any
 import zlib
 
 from .enums import ForbiddenType, ObstacleLabel
+from .icons import DOCK_ICON, FONT_PATH, dirt_icon, furniture_icon, glyph, obstacle_icon
 from .map import CELL_UNKNOWN, CELL_WALL, CellPoint, MapInfo
 
 RGB = tuple[int, int, int]
@@ -52,6 +54,7 @@ class Theme:
     no_sweep: RGB = (234, 179, 8)
     virtual_wall: RGB = (220, 38, 38)
     furniture: RGB = (236, 236, 240)
+    furniture_icon: RGB = (40, 40, 48)
     obstacle: RGB = (217, 70, 239)
     obstacle_alert: RGB = (239, 68, 68)  # pet waste, liquids
     dirt: RGB = (146, 94, 48)
@@ -316,9 +319,24 @@ def _cp(c: CellPoint) -> tuple[float, float]:
     return (c.col, c.row)
 
 
-def room_label_positions(mi: MapInfo) -> dict[int, tuple[int, int]]:
+def _inside_furniture(mi: MapInfo, col: float, row: float, margin: float) -> bool:
+    """Whether a display cell lies within a furniture box grown by `margin` cells."""
+    for f in mi.furniture:
+        centre = mi.border_point_to_cell(f.x, f.y)
+        a = math.radians(f.angle)
+        dx, dy = col - centre.col, row - centre.row
+        # Rotate into the box's own axes.
+        lx = dx * math.cos(a) + dy * math.sin(a)
+        ly = -dx * math.sin(a) + dy * math.cos(a)
+        if abs(lx) <= f.width / 2 + margin and abs(ly) <= f.height / 2 + margin:
+            return True
+    return False
+
+
+def room_label_positions(mi: MapInfo, avoid_margin: float = 3.0) -> dict[int, tuple[int, int]]:
     """A stored cell (col, row) per room to put its label on: the room cell
-    nearest the room's centroid, so L-shaped rooms still get a point inside."""
+    nearest the room's centroid that is clear of furniture (whose own labels
+    sit there), so L-shaped rooms still get a point inside."""
     w = mi.width
     cells: dict[int, list[tuple[int, int]]] = {}
     for idx, v in enumerate(mi.room_grid()):
@@ -328,13 +346,36 @@ def room_label_positions(mi: MapInfo) -> dict[int, tuple[int, int]]:
     for rid, pts in cells.items():
         cx = sum(c for c, _ in pts) / len(pts)
         cy = sum(r for _, r in pts) / len(pts)
-        out[rid] = min(pts, key=lambda p: (p[0] - cx) ** 2 + (p[1] - cy) ** 2)
+        ranked = sorted(pts, key=lambda p: (p[0] - cx) ** 2 + (p[1] - cy) ** 2)
+        out[rid] = next(
+            (p for p in ranked if not _inside_furniture(mi, p[0] + 0.5, p[1] + 0.5, avoid_margin)),
+            ranked[0],
+        )
     return out
 
 
-def add_room_labels(png: bytes, mi: MapInfo, vp: Viewport) -> bytes:
-    """Write room names onto a rendered map. Needs Pillow (Home Assistant ships
-    it); returns the image unchanged when Pillow is not installed."""
+NameFn = Callable[[Any], str]
+
+
+def _overlaps(a: tuple[float, ...], b: tuple[float, ...]) -> bool:
+    """Whether two (left, top, right, bottom) boxes intersect."""
+    return a[0] < b[2] and b[0] < a[2] and a[1] < b[3] and b[1] < a[3]
+
+
+def add_labels(
+    png: bytes,
+    mi: MapInfo,
+    vp: Viewport,
+    *,
+    obstacle_name: NameFn | None = None,
+    furniture_name: NameFn | None = None,
+    icons: bool = False,
+    theme: Theme | None = None,
+) -> bytes:
+    """Write room names onto a rendered map, plus furniture and detected-object
+    names when a naming function is given, and Material Design Icons for
+    furniture, detections, dirt and the dock when `icons` is set. Needs Pillow
+    (Home Assistant ships it); returns the image unchanged without it."""
     try:
         from io import BytesIO  # noqa: PLC0415
 
@@ -343,19 +384,116 @@ def add_room_labels(png: bytes, mi: MapInfo, vp: Viewport) -> bytes:
         return png
     image = Image.open(BytesIO(png)).convert("RGB")
     draw = ImageDraw.Draw(image)
-    try:
-        font = ImageFont.load_default(size=max(12, vp.scale * 4))
-    except TypeError:  # Pillow < 10.1 has no sized default font
-        font = ImageFont.load_default()
+
+    def font(size: float):
+        try:
+            return ImageFont.load_default(size=size)
+        except TypeError:  # Pillow < 10.1 has no sized default font
+            return ImageFont.load_default()
+
+    def text(xy: tuple[float, float], label: str, size_font, anchor: str) -> None:
+        draw.text(
+            xy, label, font=size_font, fill=(255, 255, 255),
+            anchor=anchor, stroke_width=2, stroke_fill=(0, 0, 0),
+        )  # fmt: skip
+
+    small = font(max(9, vp.scale * 2.5))
+    if furniture_name is not None:
+        for f in mi.furniture:
+            c = mi.border_point_to_cell(f.x, f.y)
+            text(vp.corner(c.col, c.row), furniture_name(f.type), small, "mm")
+    if obstacle_name is not None:
+        offset = max(3.0, vp.scale * 1.5) + 4
+        dock_box = None
+        if mi.station is not None:
+            c = mi.border_point_to_cell(mi.station.x, mi.station.y)
+            dx, dy = vp.corner(c.col, c.row)
+            r = max(4.0, vp.scale * 2.5) * 1.8  # symbol plus heading line
+            dock_box = (dx - r, dy - r, dx + r, dy + r)
+        for o in mi.obstacles:
+            c = mi.border_point_to_cell(o.x, o.y)
+            x, y = vp.corner(c.col, c.row)
+            label = obstacle_name(o.label)
+            xy, anchor = (x + offset, y), "lm"
+            if dock_box is not None and _overlaps(
+                draw.textbbox(xy, label, font=small, anchor=anchor, stroke_width=2), dock_box
+            ):
+                xy, anchor = (x - offset, y), "rm"  # the other side of the marker
+            text(xy, label, small, anchor)
+
+    if icons:
+        image = _draw_icons(image, Image, ImageDraw, ImageFont, mi, vp, theme or Theme())
+        draw = ImageDraw.Draw(image)
+
+    large = font(max(12, vp.scale * 4))
     positions = room_label_positions(mi)
     for room in mi.rooms:
-        if not room.name or room.id not in positions:
-            continue
-        x, y = vp.center(*positions[room.id])
-        draw.text(
-            (x, y), room.name, font=font, fill=(255, 255, 255),
-            anchor="mm", stroke_width=2, stroke_fill=(0, 0, 0),
-        )  # fmt: skip
+        if room.name and room.id in positions:
+            text(vp.center(*positions[room.id]), room.name, large, "mm")
+
     out = BytesIO()
     image.save(out, format="PNG", optimize=True)
     return out.getvalue()
+
+
+ICON_SUPERSAMPLE = 3  # icon layer is drawn this much larger, then scaled down smoothly
+
+
+def _draw_icons(image, pil_image, pil_draw, image_font, mi: MapInfo, vp: Viewport, theme: Theme):
+    """Icons on top of the stdlib markers (badges cover the diamonds and dots).
+
+    Pillow does not anti-alias circles, so the icon layer is drawn at
+    ICON_SUPERSAMPLE times the size and box-downsampled; the result
+    is composited over the map. Returns the new image.
+    """
+    if not FONT_PATH.exists():
+        return image
+    s = ICON_SUPERSAMPLE
+    layer = pil_image.new("RGBA", (image.width * s, image.height * s), (0, 0, 0, 0))
+    draw = pil_draw.Draw(layer)
+
+    def icon(x: float, y: float, name: str, size: float, colour: RGB) -> None:
+        if (ch := glyph(name)) is not None:
+            font = image_font.truetype(str(FONT_PATH), max(8, round(size * s)))
+            draw.text((x * s, y * s), ch, font=font, fill=colour, anchor="mm")
+
+    def disc(x: float, y: float, radius: float, colour: RGB, ring: float = 2.0) -> None:
+        """A filled circle with an even outline ring (two concentric discs)."""
+        outer, inner = radius * s, (radius - ring) * s
+        draw.ellipse((x * s - outer, y * s - outer, x * s + outer, y * s + outer), fill=theme.outline)
+        draw.ellipse((x * s - inner, y * s - inner, x * s + inner, y * s + inner), fill=colour)
+
+    for f in mi.furniture:
+        c = mi.border_point_to_cell(f.x, f.y)
+        size = min(max(min(f.width, f.height) * vp.scale * 0.7, 14), 40)
+        icon(*vp.corner(c.col, c.row), furniture_icon(f.type), size, theme.furniture_icon)
+
+    radius = max(7.0, vp.scale * 2.75)
+    for d in mi.dirt:
+        c = mi.border_point_to_cell(d.x, d.y)
+        x, y = vp.corner(c.col, c.row)
+        disc(x, y, radius, theme.dirt)
+        icon(x, y, dirt_icon(d.label), radius * 1.45, (255, 255, 255))
+    for o in mi.obstacles:
+        c = mi.border_point_to_cell(o.x, o.y)
+        x, y = vp.corner(c.col, c.row)
+        disc(x, y, radius, theme.obstacle_alert if o.label in ALERT_OBSTACLES else theme.obstacle)
+        icon(x, y, obstacle_icon(o.label), radius * 1.45, (255, 255, 255))
+
+    if mi.station is not None:
+        c = mi.border_point_to_cell(mi.station.x, mi.station.y)
+        x, y = vp.corner(c.col, c.row)
+        # Slightly larger than the stdlib dock so its jagged edge is covered;
+        # the heading line stays visible outside the circle.
+        dock_radius = max(4.0, vp.scale * 2.5) + 2
+        disc(x, y, dock_radius, theme.station)
+        icon(x, y, DOCK_ICON, dock_radius * 1.3, theme.outline)
+
+    # BOX averages each block exactly: smooth edges, no Lanczos ringing.
+    small = layer.resize(image.size, pil_image.Resampling.BOX)
+    return pil_image.alpha_composite(image.convert("RGBA"), small).convert("RGB")
+
+
+def add_room_labels(png: bytes, mi: MapInfo, vp: Viewport) -> bytes:
+    """Room names only (see add_labels)."""
+    return add_labels(png, mi, vp)

@@ -125,6 +125,9 @@
       },
       "detected_obstacles": {
         "name": "Detected obstacles"
+      },
+      "last_detected": {
+        "name": "Last detected"
       }
     },
     "vacuum": {
@@ -158,6 +161,109 @@
     },
     "invalid_fan_speed": {
       "message": "Unknown fan speed: {fan_speed}"
+    }
+  },
+  "selector": {
+    "dirt_type": {
+      "options": {
+        "unspecified": "Dirt",
+        "liquid_many": "Liquid stain",
+        "solid_many": "Solid dirt",
+        "liquid_massive": "Large liquid stain",
+        "solid_massive": "Heavy solid dirt"
+      }
+    },
+    "furniture_type": {
+      "options": {
+        "unspecified": "Furniture",
+        "single_bed": "Single bed",
+        "double_bed": "Double bed",
+        "baby_bed": "Cot",
+        "dinner_table_square": "Dining table",
+        "dinner_table_round": "Round dining table",
+        "tea_table_square": "Coffee table",
+        "tea_table_round": "Round coffee table",
+        "tv_cupboard": "TV stand",
+        "bedside_table": "Bedside table",
+        "locker": "Cabinet",
+        "wardrobe": "Wardrobe",
+        "shoe_cupboard": "Shoe cabinet",
+        "sofa_single": "Armchair",
+        "sofa_multi": "Sofa",
+        "sofa_l_shape": "Corner sofa",
+        "sofa_lazy": "Bean bag",
+        "chair": "Chair",
+        "bar_chair": "Bar stool",
+        "cat_toilet": "Litter box",
+        "pet_eating_area": "Pet feeding area",
+        "pet_house": "Pet bed",
+        "washing_machine": "Washing machine",
+        "refrigerator": "Refrigerator",
+        "vertical_aircon": "Air conditioner",
+        "vertical_fan": "Fan",
+        "potted_plant": "Potted plant",
+        "floor_mirror": "Floor mirror",
+        "toilet": "Toilet",
+        "piano": "Piano",
+        "sofa_u_shape": "U-shaped sofa",
+        "desk": "Desk",
+        "grand_piano": "Grand piano",
+        "washbasin": "Washbasin",
+        "cooker_hood_stove": "Stove",
+        "wine_cabinet": "Wine cabinet",
+        "cat_house": "Cat house",
+        "dog_house": "Dog house",
+        "round_placeholder": "Round object",
+        "weighing_scale": "Scale"
+      }
+    },
+    "obstacle_type": {
+      "options": {
+        "unspecified": "Object",
+        "cable": "Cable",
+        "tissue": "Tissue",
+        "poop": "Pet waste",
+        "liquid": "Liquid",
+        "shoes": "Shoes",
+        "solid": "Solid object",
+        "socks": "Socks",
+        "plastic_bag": "Plastic bag",
+        "trash_bin": "Trash bin",
+        "normal": "Obstacle",
+        "uncleanable": "Uncleanable spot",
+        "textiles": "Textiles",
+        "not_exist": "No longer there",
+        "ground_texture": "Floor pattern",
+        "pet": "Pet",
+        "cliff": "Drop",
+        "squatting_wc": "Squat toilet",
+        "chair_u_legs": "Chair (U legs)",
+        "chair_wheel": "Office chair",
+        "floor_mirror": "Floor mirror",
+        "book": "Book",
+        "stick": "Stick",
+        "merge_flexible": "Soft object",
+        "jewelry": "Jewelry",
+        "phone": "Phone",
+        "wallet": "Wallet",
+        "key": "Key",
+        "banknote": "Banknote",
+        "remote_control": "Remote control",
+        "glasses": "Glasses",
+        "watch": "Watch",
+        "card": "Card",
+        "headphones": "Headphones",
+        "baby_toy": "Baby toy",
+        "plant": "Plant",
+        "fitness_equipment": "Fitness equipment",
+        "pet_toy": "Pet toy",
+        "dangerous_goods": "Hazardous item",
+        "decoration": "Decoration",
+        "paper_box": "Cardboard box",
+        "pet_cat": "Cat",
+        "pet_dog": "Dog",
+        "none": "None"
+      }
     }
   }
 }

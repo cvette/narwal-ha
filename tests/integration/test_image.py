@@ -27,16 +27,16 @@ async def test_map_image_served_as_png(hass: HomeAssistant, init_integration, ha
 
     assert state.attributes["dock_room"] == "Living room"
     assert state.attributes["furniture"] == [
-        {"id": 1, "type": "sofa_multi", "room": "Living room"},
-        {"id": 2, "type": "double_bed", "room": "Bedroom"},
+        {"id": 1, "type": "sofa_multi", "name": "Sofa", "room": "Living room"},
+        {"id": 2, "type": "double_bed", "name": "Double bed", "room": "Bedroom"},
     ]
     assert state.attributes["obstacles"] == [
-        {"id": 1, "type": "cable", "room": "Living room"},
-        {"id": 2, "type": "socks", "room": "Hallway"},
-        {"id": 3, "type": "poop", "room": "Kitchen"},
+        {"id": 1, "type": "cable", "name": "Cable", "room": "Living room"},
+        {"id": 2, "type": "socks", "name": "Socks", "room": "Hallway"},
+        {"id": 3, "type": "poop", "name": "Pet waste", "room": "Kitchen"},
     ]
     assert state.attributes["dirt"] == [
-        {"id": 1, "type": "liquid_many", "status": "cleaned", "room": "Kitchen"}
+        {"id": 1, "type": "liquid_many", "name": "Liquid stain", "status": "cleaned", "room": "Kitchen"}
     ]
 
     client = await hass_client()
@@ -82,6 +82,32 @@ async def test_detected_obstacles_sensor(hass: HomeAssistant, init_integration) 
     assert [o["type"] for o in state.attributes["obstacles"]] == ["cable", "socks", "poop"]
 
 
+async def test_last_detected_sensor(hass: HomeAssistant, init_integration) -> None:
+    assert hass.states.get("sensor.narwal_last_detected").state == "1× Cable, 1× Pet waste, 1× Socks"
+
+
+async def test_names_follow_ha_language(
+    hass: HomeAssistant, robot: FakeRobot, config_entry, hass_client
+) -> None:
+    hass.config.language = "de"
+    robot.map = replace(robot.map, obstacles=robot.map.obstacles + robot.map.obstacles[:1])
+    config_entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(config_entry.entry_id)
+    await hass.async_block_till_done()
+
+    # Entity ids come from the German names now.
+    state = hass.states.get("sensor.narwal_zuletzt_erkannt")
+    assert state.state == "2× Kabel, 1× Haustierkot, 1× Socken"
+    obstacles = hass.states.get("sensor.narwal_erkannte_hindernisse").attributes["obstacles"]
+    assert [o["name"] for o in obstacles] == ["Kabel", "Socken", "Haustierkot", "Kabel"]
+    assert [o["type"] for o in obstacles] == ["cable", "socks", "poop", "cable"], "types stay stable keys"
+    furniture = hass.states.get("image.narwal_karte").attributes["furniture"]
+    assert [f["name"] for f in furniture] == ["Sofa", "Doppelbett"]
+    client = await hass_client()
+    resp = await client.get("/api/image_proxy/image.narwal_karte")
+    assert resp.status == HTTPStatus.OK
+
+
 async def test_new_detection_rerenders(
     hass: HomeAssistant, init_integration, robot: FakeRobot, freezer
 ) -> None:
@@ -91,6 +117,11 @@ async def test_new_detection_rerenders(
     await _advance(hass, freezer, timedelta(minutes=16))
     assert hass.states.get(IMAGE).state != before
     assert hass.states.get("sensor.narwal_detected_obstacles").state == "1"
+    assert hass.states.get("sensor.narwal_last_detected").state == "1× Cable"
+
+    robot.map = replace(robot.map, obstacles=[])
+    await _advance(hass, freezer, timedelta(minutes=16))
+    assert hass.states.get("sensor.narwal_last_detected").state == "None"
 
 
 async def test_unchanged_map_keeps_timestamp(

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Awaitable
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from datetime import datetime
 import logging
 
@@ -22,6 +22,7 @@ from .const import (
     POLL_INTERVAL,
     REPORT_SECONDS,
 )
+from .map_objects import ObjectNames
 from .protocol import (
     TOPIC_ROBOT_BASE_STATUS,
     TOPIC_WORKING_STATUS,
@@ -53,6 +54,7 @@ class NarwalData:
     working: WorkingStatus | None = None
     consumables: ConsumableInfo | None = None
     map: MapInfo | None = None
+    names: ObjectNames = field(default_factory=ObjectNames)
 
 
 @dataclass(frozen=True, slots=True)
@@ -75,6 +77,7 @@ class NarwalCoordinator(DataUpdateCoordinator[NarwalData]):
         entry: NarwalConfigEntry,
         robot: NarwalRobot,
         static: NarwalStatic,
+        names: ObjectNames | None = None,
     ) -> None:
         super().__init__(
             hass,
@@ -85,6 +88,7 @@ class NarwalCoordinator(DataUpdateCoordinator[NarwalData]):
         )
         self.robot = robot
         self.static = static
+        self.names = names or ObjectNames()
         self._consumables_due = dt_util.utcnow()
         self._map_due = dt_util.utcnow()
 
@@ -128,6 +132,7 @@ class NarwalCoordinator(DataUpdateCoordinator[NarwalData]):
             working=previous.working if previous else None,
             consumables=consumables,
             map=map_info,
+            names=self.names,
         )
 
     @callback
