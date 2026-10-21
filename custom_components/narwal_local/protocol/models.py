@@ -21,8 +21,10 @@ from .enums import (
     FirmwareStatus,
     IdleStatus,
     MopHumidity,
+    ReportTaskType,
     ServiceResult,
     SewageTankState,
+    TaskResult,
     TaskType,
 )
 from .features import FEATURE_IS_BOOL, FEATURE_NAMES
@@ -435,22 +437,40 @@ def decode_check_firmware(payload: bytes) -> FirmwareStatus | int:
 
 @dataclass(slots=True, frozen=True)
 class CleanReport:
-    """/report/clean_report, pushed once when a clean has finished.
+    """/report/clean_report (CleanReportSubmit), pushed once when a task ends.
 
     Fields verified on a real robot: 1 progress (%), 2 area (m², float),
-    3 duration (s), 6 start and 7 end (unix seconds). The report also carries
-    per-room details and the cleaning track, which are not decoded here.
+    3 duration (s), 5 task type, 6 start and 7 end (unix seconds), 8 how the
+    task ended. The report also carries per-room details and the cleaning
+    track, which are not decoded here.
     """
 
     progress: int = 0
     area: float = 0.0
     duration: int = 0
+    task_type: ReportTaskType | int = ReportTaskType.UNSPECIFIED
     start: int = 0
     end: int = 0
+    result: TaskResult | int = TaskResult.UNSPECIFIED
+
+    @property
+    def outcome(self) -> str:
+        """Either "completed", "stopped" (ended by someone) or "interrupted"."""
+        if self.result in (TaskResult.NORMAL_END, TaskResult.NORMAL_END_WITH_REPLENISH_MAP_FAIL):
+            return "completed"
+        if self.result in (
+            TaskResult.USER_FORCE_END,
+            TaskResult.USER_FORCE_END_ON_STATION,
+            TaskResult.USER_FORCE_END_ON_APP,
+            TaskResult.RECALL_END,
+            TaskResult.SCHEDULE_TASK_FORCE_END,
+        ):
+            return "stopped"
+        return "interrupted"
 
 
 def decode_clean_report(payload: bytes) -> CleanReport:
-    values: dict[str, float | int] = {}
+    values: dict[str, object] = {}
     for f in parse(payload):
         match f.num:
             case 1 if f.wtype == WIRE_VARINT:
@@ -459,8 +479,12 @@ def decode_clean_report(payload: bytes) -> CleanReport:
                 values["area"] = f.float
             case 3 if f.wtype == WIRE_VARINT:
                 values["duration"] = f.int
+            case 5 if f.wtype == WIRE_VARINT:
+                values["task_type"] = ReportTaskType.from_value(f.int)
             case 6 if f.wtype == WIRE_VARINT:
                 values["start"] = f.int
             case 7 if f.wtype == WIRE_VARINT:
                 values["end"] = f.int
+            case 8 if f.wtype == WIRE_VARINT:
+                values["result"] = TaskResult.from_value(f.int)
     return CleanReport(**values)

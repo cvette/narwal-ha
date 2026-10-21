@@ -17,6 +17,15 @@ import uuid
 import aiohttp
 
 from .cleaning import URL_END, URL_LOCATE, URL_START_LEGACY, CleanMode, build_clean_task_request
+from .config import (
+    URL_GET_CONFIG,
+    URL_SET_CONFIG,
+    DisturbMode,
+    RobotConfig,
+    Setting,
+    build_set_config_request,
+    decode_config,
+)
 from .enums import FanLevel, FirmwareStatus, MopHumidity, ServiceResult
 from .frame import SOURCE_APP, FrameError, Header, decode_frame, encode_frame, topic_of
 from .map import MapInfo, decode_get_map_response
@@ -290,6 +299,10 @@ class NarwalRobot(NarwalClient):
         """Current map as COMPRESSED_GRID (the protobuf default request)."""
         return decode_get_map_response((await self.call("/map/get_map")).payload)
 
+    async def get_config(self) -> RobotConfig:
+        """The robot's settings (volume, do-not-disturb, station options)."""
+        return decode_config((await self.call(URL_GET_CONFIG)).payload)
+
     async def activate_reporting(self, seconds: int = 60) -> ServiceResult | int:
         """Ask the robot to push status topics for `seconds`; re-send before it
         lapses. Request {1 topicsDuration{1 workStatus, 2 displayMap,
@@ -316,6 +329,10 @@ class NarwalRobot(NarwalClient):
 
     async def set_mop_humidity(self, humidity: MopHumidity) -> None:
         await self._command("/clean/set_mop_humidity", bytes(Writer().int32(1, int(humidity), force=True)))
+
+    async def set_config(self, setting: Setting, value: int | bool | DisturbMode) -> None:
+        """Change one setting (/config/set takes one per call)."""
+        await self._command(URL_SET_CONFIG, build_set_config_request(setting, value))
 
     async def start_clean(
         self,

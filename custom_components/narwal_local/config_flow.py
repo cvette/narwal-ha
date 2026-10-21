@@ -1,4 +1,9 @@
-"""Config flow: the robot's LAN address, checked by reading its device info."""
+"""Config flow: the robot's LAN address, checked by reading its device info.
+
+Robots are also discovered over mDNS (_narwal_sweeper._tcp, the service the
+Narwal app browses for). The WebSocket port is fixed, so a discovered robot
+is reached on DEFAULT_PORT whatever port the service advertises.
+"""
 
 from __future__ import annotations
 
@@ -10,6 +15,7 @@ import voluptuous as vol
 from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
 from homeassistant.const import CONF_HOST, CONF_PORT
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.service_info.zeroconf import ZeroconfServiceInfo
 
 from .const import DEFAULT_PORT, DOMAIN
 from .protocol import DeviceInfo, NarwalError, NarwalRobot
@@ -33,6 +39,9 @@ class NarwalConfigFlow(ConfigFlow, domain=DOMAIN):
     """Set up a Narwal robot by IP address."""
 
     VERSION = 1
+
+    def __init__(self) -> None:
+        self._discovered: dict[str, Any] = {}
 
     async def _validate(self, user_input: dict[str, Any]) -> tuple[DeviceInfo | None, dict[str, str]]:
         robot = NarwalRobot(
@@ -71,6 +80,29 @@ class NarwalConfigFlow(ConfigFlow, domain=DOMAIN):
             step_id="user",
             data_schema=self.add_suggested_values_to_schema(_schema(), user_input),
             errors=errors,
+        )
+
+    async def async_step_zeroconf(self, discovery_info: ZeroconfServiceInfo) -> ConfigFlowResult:
+        user_input = {CONF_HOST: str(discovery_info.ip_address), CONF_PORT: DEFAULT_PORT}
+        device, _errors = await self._validate(user_input)
+        if device is None:
+            return self.async_abort(reason="cannot_connect")
+        await self.async_set_unique_id(device.device_id)
+        # A robot that is already set up just gets its new address.
+        self._abort_if_unique_id_configured(updates=user_input)
+        self._discovered = user_input
+        self.context["title_placeholders"] = {"host": user_input[CONF_HOST]}
+        return await self.async_step_zeroconf_confirm()
+
+    async def async_step_zeroconf_confirm(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        if user_input is not None:
+            return self.async_create_entry(title="Narwal", data=self._discovered)
+        self._set_confirm_only()
+        return self.async_show_form(
+            step_id="zeroconf_confirm",
+            description_placeholders={"host": self._discovered[CONF_HOST]},
         )
 
     async def async_step_reconfigure(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:

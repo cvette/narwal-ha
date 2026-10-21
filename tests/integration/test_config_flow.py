@@ -3,14 +3,16 @@
 from __future__ import annotations
 
 from collections.abc import Generator
+from ipaddress import ip_address
 from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from homeassistant.config_entries import SOURCE_USER
+from homeassistant.config_entries import SOURCE_USER, SOURCE_ZEROCONF
 from homeassistant.const import CONF_HOST, CONF_PORT
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
+from homeassistant.helpers.service_info.zeroconf import ZeroconfServiceInfo
 
 from custom_components.narwal_local.const import DOMAIN
 
@@ -93,3 +95,51 @@ async def test_reconfigure_rejects_other_robot(
     assert result["type"] is FlowResultType.ABORT
     assert result["reason"] == "wrong_device"
     assert init_integration.data[CONF_HOST] == "192.168.1.113"
+
+
+def _discovery(ip: str = "192.168.1.113") -> ZeroconfServiceInfo:
+    return ZeroconfServiceInfo(
+        ip_address=ip_address(ip),
+        ip_addresses=[ip_address(ip)],
+        hostname="narwal.local.",
+        name="narwal._narwal_sweeper._tcp.local.",
+        port=5000,
+        type="_narwal_sweeper._tcp.local.",
+        properties={},
+    )
+
+
+@pytest.mark.usefixtures("mock_setup_entry")
+async def test_zeroconf_discovery_creates_entry(hass: HomeAssistant, robot: FakeRobot) -> None:
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": SOURCE_ZEROCONF}, data=_discovery()
+    )
+    assert result["type"] is FlowResultType.FORM
+    assert result["step_id"] == "zeroconf_confirm"
+    assert robot.port == 9002, "the advertised port is not used"
+
+    result = await hass.config_entries.flow.async_configure(result["flow_id"], {})
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert result["data"] == {CONF_HOST: "192.168.1.113", CONF_PORT: 9002}
+    assert result["result"].unique_id == DEVICE_ID
+
+
+async def test_zeroconf_updates_host_of_known_robot(
+    hass: HomeAssistant, robot: FakeRobot, config_entry
+) -> None:
+    config_entry.add_to_hass(hass)
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": SOURCE_ZEROCONF}, data=_discovery("192.168.1.77")
+    )
+    assert result["type"] is FlowResultType.ABORT
+    assert result["reason"] == "already_configured"
+    assert config_entry.data[CONF_HOST] == "192.168.1.77"
+
+
+async def test_zeroconf_unreachable_aborts(hass: HomeAssistant, robot: FakeRobot) -> None:
+    robot.fail_connect = True
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": SOURCE_ZEROCONF}, data=_discovery()
+    )
+    assert result["type"] is FlowResultType.ABORT
+    assert result["reason"] == "cannot_connect"

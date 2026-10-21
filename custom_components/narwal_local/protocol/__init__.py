@@ -18,6 +18,7 @@ from .client import (
     NarwalRobot,
     NarwalTimeoutError,
 )
+from .config import DisturbMode, RobotConfig, Setting, decode_config
 from .enums import (
     ChargingStatus,
     FanLevel,
@@ -25,7 +26,9 @@ from .enums import (
     ForbiddenType,
     IdleStatus,
     MopHumidity,
+    ReportTaskType,
     ServiceResult,
+    TaskResult,
     TaskType,
 )
 from .errors import ERROR_CATEGORIES, error_category, error_hex
@@ -59,6 +62,7 @@ __all__ = [
     "ConsumableInfo",
     "DeviceInfo",
     "DisplayMap",
+    "DisturbMode",
     "FanLevel",
     "FeatureList",
     "FirmwareStatus",
@@ -77,8 +81,12 @@ __all__ = [
     "NarwalTimeoutError",
     "Pose",
     "RobotBaseStatus",
+    "RobotConfig",
     "Room",
+    "ReportTaskType",
     "ServiceResult",
+    "Setting",
+    "TaskResult",
     "TaskType",
     "WorkingStatus",
     "add_labels",
@@ -87,6 +95,7 @@ __all__ = [
     "build_clean_task_request",
     "build_start_request",
     "decode_clean_report",
+    "decode_config",
     "decode_display_map",
     "decode_get_map_response",
     "decode_robot_base_status",

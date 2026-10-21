@@ -2,8 +2,8 @@
 
 The protocol package is loaded on its own (as `protocol`) so its tests do not
 need Home Assistant. It is loaded by file location rather than by putting
-custom_components/narwal_local on sys.path: that directory holds select.py,
-which would shadow the standard library's `select` module.
+custom_components/narwal_local on sys.path: that directory holds select.py
+and time.py, which would shadow the standard library's modules.
 """
 
 from __future__ import annotations

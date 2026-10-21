@@ -23,6 +23,10 @@
           "host": "Neue IP-Adresse oder neuer Hostname desselben Roboters.",
           "port": "Lokaler WebSocket-Port des Roboters. Auf 9002 lassen."
         }
+      },
+      "zeroconf_confirm": {
+        "title": "Narwal-Roboter gefunden",
+        "description": "Den unter {host} gefundenen Narwal-Roboter einrichten? Er wird lokal gesteuert, ein Narwal-Konto ist nicht nötig."
       }
     },
     "error": {
@@ -32,8 +36,10 @@
     "abort": {
       "already_configured": "Dieser Roboter ist bereits eingerichtet.",
       "reconfigure_successful": "Die Adresse wurde aktualisiert.",
-      "wrong_device": "Unter dieser Adresse antwortet ein anderer Roboter."
-    }
+      "wrong_device": "Unter dieser Adresse antwortet ein anderer Roboter.",
+      "cannot_connect": "Der Roboter ist nicht erreichbar."
+    },
+    "flow_title": "Narwal ({host})"
   },
   "entity": {
     "binary_sensor": {
@@ -50,9 +56,49 @@
         "name": "Reinigungsmittel knapp"
       }
     },
+    "event": {
+      "clean_finished": {
+        "name": "Reinigung beendet",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "completed": "Abgeschlossen",
+              "stopped": "Abgebrochen",
+              "interrupted": "Unterbrochen"
+            }
+          },
+          "result": {
+            "name": "Ergebnis"
+          },
+          "clean_type": {
+            "name": "Reinigungsart"
+          },
+          "area": {
+            "name": "Fläche"
+          },
+          "duration": {
+            "name": "Dauer"
+          },
+          "progress": {
+            "name": "Fortschritt"
+          },
+          "start": {
+            "name": "Beginn"
+          },
+          "end": {
+            "name": "Ende"
+          }
+        }
+      }
+    },
     "image": {
       "map": {
         "name": "Karte"
+      }
+    },
+    "number": {
+      "volume": {
+        "name": "Lautstärke"
       }
     },
     "select": {
@@ -246,6 +292,37 @@
           "replace_suggested": "Wechseln",
           "abnormal": "Fehler"
         }
+      }
+    },
+    "switch": {
+      "do_not_disturb": {
+        "name": "Nicht stören"
+      },
+      "child_lock": {
+        "name": "Kindersicherung"
+      },
+      "dust_gathering": {
+        "name": "Automatische Absaugung"
+      },
+      "quiet_dust_gathering": {
+        "name": "Leise Absaugung"
+      },
+      "dry_dust_bag": {
+        "name": "Staubbeutel trocknen"
+      },
+      "auto_add_detergent": {
+        "name": "Automatisch Reinigungsmittel"
+      },
+      "hot_water_wash": {
+        "name": "Mopp-Wäsche mit heißem Wasser"
+      }
+    },
+    "time": {
+      "do_not_disturb_start": {
+        "name": "Nicht stören ab"
+      },
+      "do_not_disturb_end": {
+        "name": "Nicht stören bis"
       }
     },
     "vacuum": {

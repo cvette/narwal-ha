@@ -96,6 +96,42 @@ class TaskType(_NamedIntEnum):
     SEARCH_PET = 27
 
 
+class ReportTaskType(_NamedIntEnum):
+    """CleanReportSubmit.taskType (field 5): what kind of clean it was."""
+
+    UNSPECIFIED = 0
+    SWEEP = 1
+    MOP = 2
+    SWEEP_MOP = 3  # vacuum and mop together
+    SWEEP_THEN_MOP = 4
+    SMART = 5
+    CUSTOM = 6  # rooms with their own parameters, as Home Assistant starts them
+
+
+class TaskResult(_NamedIntEnum):
+    """CleanReportSubmit.taskRes (field 8): how the task ended."""
+
+    UNSPECIFIED = 0
+    NORMAL_END = 1
+    USER_FORCE_END = 2
+    SHUTDOWN_FORCE_END = 3
+    LOW_BATTERY_FORCE_END = 4
+    OVERFLOW_FORCE_END = 5
+    PAUSE_TOO_LONG_FORCE_END = 6
+    SYSTEM_ERROR_FORCE_END = 7
+    USER_FORCE_END_ON_STATION = 8
+    USER_FORCE_END_ON_APP = 9
+    RECALL_END = 10
+    NORMAL_END_WITH_REPLENISH_MAP_FAIL = 11
+    MAP_UNMATCHED_FORCE_END = 12
+    RELOCATION_FAIL_WITH_STATION = 13
+    RELOCATION_FAIL_WITHOUT_STATION = 14
+    PRETASK_ERROR_FORCE_END = 15
+    SCHEDULE_TASK_FORCE_END = 16
+    UNEXECUTED = 17
+    PET_NOT_FOUND = 18
+
+
 class IdleStatus(_NamedIntEnum):
     """RobotTaskStatus.idleStatus (sub-field 3)."""
 

@@ -15,9 +15,13 @@ from .protocol import NarwalError, NarwalRobot
 
 PLATFORMS: list[Platform] = [
     Platform.BINARY_SENSOR,
+    Platform.EVENT,
     Platform.IMAGE,
+    Platform.NUMBER,
     Platform.SELECT,
     Platform.SENSOR,
+    Platform.SWITCH,
+    Platform.TIME,
     Platform.VACUUM,
 ]
 

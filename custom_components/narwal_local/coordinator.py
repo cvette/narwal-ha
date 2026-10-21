@@ -44,8 +44,11 @@ from .protocol import (
     NarwalCommandError,
     NarwalError,
     NarwalRobot,
+    NarwalTimeoutError,
     Pose,
     RobotBaseStatus,
+    RobotConfig,
+    Setting,
     WorkingStatus,
     decode_clean_report,
     decode_display_map,
@@ -68,6 +71,7 @@ class NarwalData:
     map: MapInfo | None = None
     last_report: CleanReport | None = None
     names: ObjectNames = field(default_factory=ObjectNames)
+    config: RobotConfig | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -152,6 +156,7 @@ class NarwalCoordinator(DataUpdateCoordinator[NarwalData]):
             if map_info is None or now >= self._map_due or map_info.map_id != status.map_id:
                 map_info = await self.robot.get_map()
                 self._map_due = now + MAP_INTERVAL
+            config = await self._async_get_config(previous.config if previous else None)
         except NarwalError as err:
             raise UpdateFailed(
                 translation_domain=DOMAIN,
@@ -166,7 +171,28 @@ class NarwalCoordinator(DataUpdateCoordinator[NarwalData]):
             map=map_info,
             last_report=previous.last_report if previous else None,
             names=self.names,
+            config=config,
         )
+
+    async def _async_get_config(self, previous: RobotConfig | None) -> RobotConfig | None:
+        """The robot's settings; a robot that does not answer /config/get
+        simply gets no settings entities."""
+        try:
+            return await self.robot.get_config()
+        except (NarwalCommandError, NarwalTimeoutError) as err:
+            _LOGGER.debug("Reading the settings failed: %s", err)
+            return previous
+
+    async def async_set_config(self, setting: Setting, value: object) -> None:
+        """Change a setting, then read the settings back so the entities show
+        what the robot actually stored."""
+        await self.async_command(self.robot.set_config(setting, value))
+        try:
+            config = await self.robot.get_config()
+        except NarwalError as err:
+            _LOGGER.debug("Reading back the settings failed: %s", err)
+            return
+        self.async_set_updated_data(replace(self.data, config=config))
 
     # --- pushes -----------------------------------------------------------
 

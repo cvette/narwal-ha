@@ -11,16 +11,19 @@ cloud, no internet connection needed.
 **Status: early.** Tested with one robot on firmware `v01.09.05.04`, including
 a recorded full clean. Reading state, the live position and the clean report
 work, and so do all commands: start (whole home or chosen rooms), pause/resume,
-stop, return to dock, locate, fan speed and mop humidity.
+stop, return to dock, locate, fan speed and mop humidity, plus the robot's
+settings (volume, do-not-disturb, station automation).
 
 ## Installation (HACS)
 
 1. In HACS, open the menu (⋮) → **Custom repositories**.
 2. Add `https://github.com/cvette/narwal-ha` with type **Integration**.
 3. Install **Narwal Local** and restart Home Assistant.
-4. Go to **Settings → Devices & services → Add integration → Narwal Local** and
-   enter the robot's IP address. Give the robot a fixed IP (DHCP reservation)
-   in your router; if it changes, use **Reconfigure** on the integration.
+4. Home Assistant should offer the robot under **Settings → Devices &
+   services → Discovered** (it announces itself over mDNS). Otherwise go to
+   **Add integration → Narwal Local** and enter the robot's IP address. Give
+   the robot a fixed IP (DHCP reservation) in your router; if it changes,
+   discovery updates it, or use **Reconfigure** on the integration.
 
 Manual installation: copy `custom_components/narwal_local` into your Home
 Assistant `config/custom_components/` folder and restart.
@@ -44,6 +47,10 @@ Assistant `config/custom_components/` folder and restart.
 | `select.narwal_mop_humidity` | dry / normal / wet |
 | `select.narwal_cleaning_mode` | how cleans started from Home Assistant run: vacuum and mop / vacuum / mop / vacuum, then mop |
 | `image.narwal_map` | the map: rooms with names, walls, doors, carpets, no-carpet areas, no-go zones, areas the robot cannot enter (darker), and icons for furniture, objects the camera recognised, dirty spots and the dock; during a clean also the robot and its path |
+| `event.narwal_clean_finished` | fired when the robot reports the end of a clean: event type `completed`, `stopped` (ended by someone) or `interrupted` (error, low battery, …); attributes `result`, `clean_type`, `area` (m²), `duration` (s), `progress` (%), `start`, `end` |
+| `switch.narwal_do_not_disturb`, `time.narwal_do_not_disturb_start`, `_end` | do-not-disturb and its window, in the robot's local time |
+| `number.narwal_volume` | voice volume, 0–100 % |
+| `switch.narwal_auto_empty`, `_quiet_auto_empty`, `_dust_bag_drying`, `_automatic_detergent`, `_hot_water_mop_wash`, `_child_lock` | station automation and child lock (only those your robot supports) |
 | `sensor.narwal_detected_obstacles` | number of objects the camera recognised on the floor (cables, shoes, socks, pet waste, …); list in attribute `obstacles` |
 | `sensor.narwal_last_detected` | what was recognised, as text: `3× Cable, 2× Shoes, 1× Plastic bag` (in German: `3× Kabel, 2× Schuhe, 1× Plastiktüte`) |
 
@@ -84,6 +91,29 @@ every 45 s and polls every 60 s as a fallback. The robot drops the connection
 now and then (a few times per clean); the integration reconnects at once and
 only marks the entities unavailable if that fails. Diagnostics can be downloaded
 from the device page (device token and ids are redacted).
+
+Example automation when a clean has finished:
+
+```yaml
+trigger:
+  - platform: state
+    entity_id: event.narwal_clean_finished
+condition:
+  - condition: state
+    entity_id: event.narwal_clean_finished
+    attribute: event_type
+    state: completed
+action:
+  - action: notify.mobile_app_phone
+    data:
+      message: >
+        Cleaned {{ state_attr('event.narwal_clean_finished', 'area') }} m² in
+        {{ (state_attr('event.narwal_clean_finished', 'duration') / 60) | round }} min.
+```
+
+Settings are read from the robot every 60 s, so changes made in the Narwal app
+show up in Home Assistant too. After a change from Home Assistant the settings
+are read back at once, so the entities show what the robot stored.
 
 ## Room cleaning
 
@@ -128,13 +158,18 @@ in the `codes` attribute.
   the decryption key is handed out by Narwal's cloud after an account login.
   The integration stays fully local and shows each object's type, icon and
   room instead.
+- **Settings**: writing volume, do-not-disturb and child lock was checked on a
+  robot. The station switches use the same `/config/set` call with field
+  numbers from the Narwal app, and every change is read back.
+- **Discovery** uses the mDNS service the Narwal app looks for
+  (`_narwal_sweeper._tcp`). It could not yet be checked on a real network;
+  entering the IP address always works.
 - One robot per config entry; several robots work as several entries.
 
 ## Roadmap
 
-1. Discovery of the robot on the network (no IP to type in).
-2. An event when a clean finishes (area, duration) for automations.
-3. More settings: do-not-disturb, volume, station automation.
+Ideas, not promises: zone cleaning, scheduled cleans, more settings (carpet
+handling, corner cleaning), consumable reset.
 
 ## Development
 
@@ -146,7 +181,8 @@ the robot (only `aiohttp`), independent of Home Assistant:
 | `pb.py` | minimal protobuf reader/writer |
 | `frame.py` | frame `0x01 + varint(len) + Header + payload`, Header message |
 | `client.py` | `NarwalClient` (connect, call, pushes) and `NarwalRobot` (typed calls) |
-| `models.py` | status, working status, device info, features, consumables, firmware |
+| `models.py` | status, working status, device info, features, consumables, firmware, clean report |
+| `config.py` | settings: `/config/get` and `/config/set` (whose field numbers differ from the read side) |
 | `map.py` | `/map/get_map` decoding: grid, rooms, doors, carpets, forbidden zones |
 | `render.py` | map → PNG with the standard library; icons, labels, robot and path with Pillow (`MapRenderer` caches per map) |
 

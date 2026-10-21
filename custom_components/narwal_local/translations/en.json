@@ -23,6 +23,10 @@
           "host": "New IP address or hostname of the same robot.",
           "port": "Local WebSocket port of the robot. Leave at 9002."
         }
+      },
+      "zeroconf_confirm": {
+        "title": "Narwal robot found",
+        "description": "Set up the Narwal robot found at {host}? It is controlled locally, no Narwal account is needed."
       }
     },
     "error": {
@@ -32,8 +36,10 @@
     "abort": {
       "already_configured": "This robot is already set up.",
       "reconfigure_successful": "The address was updated.",
-      "wrong_device": "A different robot answers at this address."
-    }
+      "wrong_device": "A different robot answers at this address.",
+      "cannot_connect": "Cannot reach the robot."
+    },
+    "flow_title": "Narwal ({host})"
   },
   "entity": {
     "binary_sensor": {
@@ -50,9 +56,49 @@
         "name": "Detergent low"
       }
     },
+    "event": {
+      "clean_finished": {
+        "name": "Clean finished",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "completed": "Completed",
+              "stopped": "Stopped",
+              "interrupted": "Interrupted"
+            }
+          },
+          "result": {
+            "name": "Result"
+          },
+          "clean_type": {
+            "name": "Clean type"
+          },
+          "area": {
+            "name": "Area"
+          },
+          "duration": {
+            "name": "Duration"
+          },
+          "progress": {
+            "name": "Progress"
+          },
+          "start": {
+            "name": "Start"
+          },
+          "end": {
+            "name": "End"
+          }
+        }
+      }
+    },
     "image": {
       "map": {
         "name": "Map"
+      }
+    },
+    "number": {
+      "volume": {
+        "name": "Volume"
       }
     },
     "select": {
@@ -246,6 +292,37 @@
           "replace_suggested": "Replace",
           "abnormal": "Fault"
         }
+      }
+    },
+    "switch": {
+      "do_not_disturb": {
+        "name": "Do not disturb"
+      },
+      "child_lock": {
+        "name": "Child lock"
+      },
+      "dust_gathering": {
+        "name": "Auto-empty"
+      },
+      "quiet_dust_gathering": {
+        "name": "Quiet auto-empty"
+      },
+      "dry_dust_bag": {
+        "name": "Dust bag drying"
+      },
+      "auto_add_detergent": {
+        "name": "Automatic detergent"
+      },
+      "hot_water_wash": {
+        "name": "Hot water mop wash"
+      }
+    },
+    "time": {
+      "do_not_disturb_start": {
+        "name": "Do not disturb start"
+      },
+      "do_not_disturb_end": {
+        "name": "Do not disturb end"
       }
     },
     "vacuum": {

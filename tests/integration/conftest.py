@@ -21,10 +21,13 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry  # noqa
 
 from custom_components.narwal_local.const import DOMAIN  # noqa: E402
 from custom_components.narwal_local.protocol import (  # noqa: E402
+    DisturbMode,
     Message,
     NarwalCommandError,
     NarwalConnectionError,
     ServiceResult,
+    Setting,
+    decode_config,
 )
 from custom_components.narwal_local.protocol.frame import Header  # noqa: E402
 from custom_components.narwal_local.protocol.map import decode_get_map_response  # noqa: E402
@@ -67,6 +70,8 @@ class FakeRobot:
         self.consumables = decode_consumable_info(load_bin("consumable_info"))
         self.map = decode_get_map_response(load_bin("get_map"))
         self.map_fetches = 0
+        self.config = decode_config(config_payload())
+        self.config_supported = True
 
     def __call__(self, host: str, port: int = 9002, **_: object) -> FakeRobot:
         """Acts as the NarwalRobot constructor."""
@@ -118,6 +123,12 @@ class FakeRobot:
         self.map_fetches += 1
         return self.map
 
+    async def get_config(self):
+        self._ensure()
+        if not self.config_supported:
+            raise NarwalCommandError("/config/get", ServiceResult.PERFORM_GENERAL_FAILED)
+        return replace(self.config, flags=dict(self.config.flags))
+
     async def activate_reporting(self, seconds: int = 60):
         self._ensure()
         self.calls.append(("activate_reporting", seconds))
@@ -143,6 +154,15 @@ class FakeRobot:
 
     async def set_mop_humidity(self, humidity):
         await self._command("set_mop_humidity", humidity)
+
+    async def set_config(self, setting, value):
+        await self._command("set_config", setting, value)
+        if setting is Setting.VOLUME:
+            self.config.volume = value
+        elif setting is Setting.DO_NOT_DISTURB:
+            self.config.do_not_disturb = value
+        else:
+            self.config.flags[setting] = value
 
     async def start_clean(self, rooms=None, *, mode=None, **_):
         await self._command("start_clean", list(rooms) if rooms else None, mode)
@@ -198,10 +218,22 @@ def display_map_payload(col: float, row: float, theta: float = 0.0) -> bytes:
     return bytes(Writer().message(1, Writer().message(1, point).float_(2, theta)).varint(10, 1))
 
 
-def clean_report_payload(area: float, seconds: int, start: int, end: int) -> bytes:
-    return bytes(
-        Writer().varint(1, 100).float_(2, area).varint(3, seconds).varint(6, start).varint(7, end)
-    )
+def clean_report_payload(
+    area: float, seconds: int, start: int, end: int, *, task_type: int = 3, result: int = 1
+) -> bytes:
+    """A clean report; task type 3 is vacuum and mop, result 1 a normal end."""
+    w = Writer().varint(1, 100).float_(2, area).varint(3, seconds).varint(5, task_type)
+    return bytes(w.varint(6, start).varint(7, end).varint(8, result))
+
+
+def config_payload() -> bytes:
+    """A GetConfig response like the real robot's: volume 20 %, do-not-disturb
+    22:00-08:00, auto-detergent, auto-empty, bag drying and hot water on."""
+    dnd = DisturbMode(True)
+    config = Writer().varint(1, 20).varint(2, 1).message(4, dnd.encode())
+    for num in (6, 8, 27, 31, 32):
+        config.varint(num, 1)
+    return bytes(Writer().varint(1, 1).message(2, config))
 
 
 def working_payload(progress: float, area: float, seconds: int, remain: int, zone: int) -> bytes:
