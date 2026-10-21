@@ -11,11 +11,10 @@ from homeassistant.components.vacuum import (
     SERVICE_PAUSE,
     SERVICE_RETURN_TO_BASE,
     SERVICE_SET_FAN_SPEED,
-    SERVICE_START,
 )
 from homeassistant.const import ATTR_ENTITY_ID, STATE_OFF, STATE_ON
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
+from homeassistant.exceptions import HomeAssistantError
 
 from custom_components.narwal_local.protocol import FanLevel, MopHumidity, ServiceResult, TaskType
 

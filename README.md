@@ -32,7 +32,7 @@ Assistant `config/custom_components/` folder and restart.
 
 | Entity | Content |
 |---|---|
-| `vacuum.narwal` | state, start (whole home, or resume when paused), pause, stop, return to dock, locate, fan speed (quiet … max), room cleaning with `vacuum.clean_area` |
+| `vacuum.narwal` | state, start (whole home, or resume when paused), pause, stop, return to dock, locate, fan speed (`mute`, `normal`, `strong`, `deep`, `super`; shown translated), room cleaning with `vacuum.clean_area` |
 | `sensor.narwal_battery` | battery % |
 | `sensor.narwal_task` | current task (idle, vacuuming, mopping, returning, …) |
 | `sensor.narwal_cleaning_progress`, `_cleaned_area`, `_cleaning_time` | updated during a clean |
