@@ -6,7 +6,9 @@ floor plan. The golden JSON is the Go client's decoding of the same bytes.
 
 from __future__ import annotations
 
+from dataclasses import replace
 import math
+import time
 
 import pytest
 
@@ -174,6 +176,28 @@ def test_camera_detections(live_map: MapInfo) -> None:
     (dirt,) = live_map.dirt
     assert (dirt.label, dirt.status) == (DirtLabel.LIQUID_MANY, DirtStatus.CLEANED)
     assert live_map.room_name(live_map.room_at(dirt.x, dirt.y)) == "Kitchen"
+
+
+def test_room_grid_is_cached(live_map: MapInfo) -> None:
+    first = live_map.room_grid()
+    assert live_map.room_grid() is first, "second call must not decode again"
+
+    copy = replace(live_map)
+    assert copy.room_grid() == first  # fresh cache, same content
+
+    live_map.grid_raw = b""
+    assert live_map.room_grid() == bytes(live_map.width * live_map.height), "new grid bytes, new result"
+
+
+def test_room_lookups_are_fast(live_map: MapInfo) -> None:
+    """Attributes look up the room of every object on each state write; this
+    once took half a second in Home Assistant because each lookup decoded the
+    whole grid."""
+    start = time.perf_counter()
+    for _ in range(200):
+        for o in live_map.obstacles:
+            live_map.room_at(o.x, o.y)
+    assert time.perf_counter() - start < 0.5
 
 
 def test_room_at_outside_map(live_map: MapInfo) -> None:

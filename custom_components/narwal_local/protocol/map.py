@@ -163,6 +163,9 @@ class MapInfo:
     map_data_format: int = 0  # 18
     grid_compressed: bytes = b""  # 17
     grid_raw: bytes = b""
+    # (grid_raw, width, height, room grid); not an init field, so
+    # dataclasses.replace() starts a copy with an empty cache.
+    _room_grid_cache: tuple | None = field(default=None, init=False, repr=False, compare=False)
 
     @property
     def resolution_m(self) -> float:
@@ -216,7 +219,16 @@ class MapInfo:
         return parse_packed_varints(buf)
 
     def room_grid(self) -> bytes:
-        """One byte per cell: 0 unknown, 255 wall/obstacle, else room id."""
+        """One byte per cell: 0 unknown, 255 wall/obstacle, else room id.
+
+        Decoding the packed grid takes tens of milliseconds, and room_at runs
+        once per object for every attribute update, so the result is cached
+        for the current grid bytes and size.
+        """
+        key = (self.grid_raw, self.width, self.height)
+        cached = self._room_grid_cache
+        if cached is not None and cached[0] is key[0] and cached[1:3] == key[1:]:
+            return cached[3]
         size = self.width * self.height
         out = bytearray(size)
         for i, v in enumerate(self.grid_cells()[:size]):
@@ -224,7 +236,9 @@ class MapInfo:
                 continue
             room = v >> 8
             out[i] = CELL_WALL if room == 0 else room & 0x3F
-        return bytes(out)
+        grid = bytes(out)
+        self._room_grid_cache = (*key, grid)
+        return grid
 
     def to_json(self) -> dict:
         """Browser/HA-friendly view; matches the Go client's MapJSON."""
