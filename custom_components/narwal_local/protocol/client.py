@@ -8,7 +8,7 @@ or /<pid>/<did> topic prefix is needed on the LAN.
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 import contextlib
 from dataclasses import dataclass
 import logging
@@ -16,6 +16,7 @@ import uuid
 
 import aiohttp
 
+from .cleaning import URL_END, URL_LOCATE, URL_START_LEGACY, CleanMode, build_clean_task_request
 from .enums import FanLevel, FirmwareStatus, MopHumidity, ServiceResult
 from .frame import SOURCE_APP, FrameError, Header, decode_frame, encode_frame, topic_of
 from .map import MapInfo, decode_get_map_response
@@ -254,9 +255,8 @@ class NarwalClient:
 class NarwalRobot(NarwalClient):
     """Typed service calls on top of NarwalClient.
 
-    Commands that change robot state (dock, pause, fan level, …) act on the
-    physical robot. Only calls verified on a real robot are exposed here;
-    starting a clean, room cleaning, stop and locate follow once verified.
+    Commands that change robot state (dock, pause, start, …) act on the
+    physical robot.
     """
 
     async def _command(self, url: str, request: bytes = b"") -> ServiceResult | int:
@@ -316,6 +316,45 @@ class NarwalRobot(NarwalClient):
 
     async def set_mop_humidity(self, humidity: MopHumidity) -> None:
         await self._command("/clean/set_mop_humidity", bytes(Writer().int32(1, int(humidity), force=True)))
+
+    async def start_clean(
+        self,
+        rooms: Sequence[int] | None = None,
+        *,
+        mode: CleanMode = CleanMode.SWEEP_MOP,
+        fan: FanLevel | int | None = None,
+        humidity: MopHumidity | int | None = None,
+        count: int = 1,
+    ) -> None:
+        """Start a clean of the given rooms (in this order) or of all rooms.
+
+        Suction and mop humidity default to the robot's current ones. Verified
+        on a robot: /clean/start_clean with one custom-task item per room. The
+        robot accepts but ignores a whole-map item, so "everything" is sent as
+        every room of the current map.
+        """
+        status = await self.get_status()
+        if not rooms:
+            rooms = [room.id for room in (await self.get_map()).rooms]
+            if not rooms:
+                raise NarwalError("the current map has no rooms")
+        request = build_clean_task_request(
+            status.map_id,
+            rooms,
+            mode=mode,
+            fan=status.fan_level if fan is None else fan,
+            humidity=status.mop_humidity if humidity is None else humidity,
+            count=count,
+        )
+        await self._command(URL_START_LEGACY, request)
+
+    async def stop(self) -> None:
+        """End all running tasks (the app's "end cleaning")."""
+        await self._command(URL_END)
+
+    async def locate(self) -> None:
+        """Make the robot call out so it can be found."""
+        await self._command(URL_LOCATE)
 
 
 def _repeated_int64(values: tuple[int, ...]) -> bytes:

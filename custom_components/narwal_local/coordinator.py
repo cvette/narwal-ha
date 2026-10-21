@@ -33,6 +33,7 @@ from .protocol import (
     TOPIC_DISPLAY_MAP,
     TOPIC_ROBOT_BASE_STATUS,
     TOPIC_WORKING_STATUS,
+    CleanMode,
     CleanReport,
     ConsumableInfo,
     DeviceInfo,
@@ -114,6 +115,9 @@ class NarwalCoordinator(DataUpdateCoordinator[NarwalData]):
         self.static = static
         self.names = names or ObjectNames()
         self.live = LiveState()
+        # Mode for cleans started from Home Assistant; set by the clean mode
+        # select (the robot keeps no "current mode" of its own).
+        self.clean_mode = CleanMode.SWEEP_MOP
         self._live_listeners: list[Callable[[], None]] = []
         self._consumables_due = dt_util.utcnow()
         self._map_due = dt_util.utcnow()

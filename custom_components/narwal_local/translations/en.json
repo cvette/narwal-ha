@@ -54,6 +54,15 @@
           "normal": "Normal",
           "wet": "Wet"
         }
+      },
+      "clean_mode": {
+        "name": "Cleaning mode",
+        "state": {
+          "vacuum_and_mop": "Vacuum and mop",
+          "vacuum": "Vacuum",
+          "mop": "Mop",
+          "vacuum_then_mop": "Vacuum, then mop"
+        }
       }
     },
     "sensor": {
@@ -161,9 +170,6 @@
     },
     "command_failed": {
       "message": "The robot rejected the command: {result}"
-    },
-    "start_not_supported": {
-      "message": "Starting a new clean is not supported yet; start only resumes a paused clean."
     },
     "invalid_fan_speed": {
       "message": "Unknown fan speed: {fan_speed}"

@@ -54,6 +54,15 @@
           "normal": "Normal",
           "wet": "Nass"
         }
+      },
+      "clean_mode": {
+        "name": "Reinigungsmodus",
+        "state": {
+          "vacuum_and_mop": "Saugen und wischen",
+          "vacuum": "Saugen",
+          "mop": "Wischen",
+          "vacuum_then_mop": "Erst saugen, dann wischen"
+        }
       }
     },
     "sensor": {
@@ -161,9 +170,6 @@
     },
     "command_failed": {
       "message": "Der Roboter hat den Befehl abgelehnt: {result}"
-    },
-    "start_not_supported": {
-      "message": "Eine neue Reinigung zu starten wird noch nicht unterstützt. Start setzt nur eine pausierte Reinigung fort."
     },
     "invalid_fan_speed": {
       "message": "Unbekannte Saugstufe: {fan_speed}"

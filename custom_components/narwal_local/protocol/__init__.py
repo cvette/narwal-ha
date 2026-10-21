@@ -4,6 +4,7 @@ Reconstructed from the Narwal app 2.9.90 and verified against a real robot.
 Independent of Home Assistant so it can move to its own package later.
 """
 
+from .cleaning import CleanMode, CleanZoneType, build_clean_task_request, build_start_request
 from .client import (
     TOPIC_CLEAN_REPORT,
     TOPIC_DISPLAY_MAP,
@@ -50,7 +51,9 @@ __all__ = [
     "TOPIC_WORKING_STATUS",
     "Activity",
     "ChargingStatus",
+    "CleanMode",
     "CleanReport",
+    "CleanZoneType",
     "ConsumableInfo",
     "DeviceInfo",
     "DisplayMap",
@@ -79,6 +82,8 @@ __all__ = [
     "add_labels",
     "add_robot",
     "add_room_labels",
+    "build_clean_task_request",
+    "build_start_request",
     "decode_clean_report",
     "decode_display_map",
     "decode_get_map_response",

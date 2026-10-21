@@ -144,6 +144,15 @@ class FakeRobot:
     async def set_mop_humidity(self, humidity):
         await self._command("set_mop_humidity", humidity)
 
+    async def start_clean(self, rooms=None, *, mode=None, **_):
+        await self._command("start_clean", list(rooms) if rooms else None, mode)
+
+    async def stop(self):
+        await self._command("stop")
+
+    async def locate(self):
+        await self._command("locate")
+
     # --- test helpers ---------------------------------------------------
 
     def push(self, topic: str, payload: bytes) -> None:

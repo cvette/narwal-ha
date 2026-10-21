@@ -44,17 +44,6 @@ async def test_vacuum_commands(hass: HomeAssistant, init_integration, robot: Fak
     assert ("set_fan_level", FanLevel.STRONG) in robot.calls
 
 
-async def test_start_only_resumes(hass: HomeAssistant, init_integration, robot: FakeRobot) -> None:
-    with pytest.raises(ServiceValidationError):
-        await _call(hass, "vacuum", SERVICE_START, VACUUM)
-
-    robot.push("/status/robot_base_status", status_payload({1: TaskType.SWEEP, 2: 1, 4: 3}))
-    await hass.async_block_till_done()
-    assert hass.states.get(VACUUM).state == "paused"
-    await _call(hass, "vacuum", SERVICE_START, VACUUM)
-    assert ("resume",) in robot.calls
-
-
 async def test_rejected_command_raises(hass: HomeAssistant, init_integration, robot: FakeRobot) -> None:
     robot.fail_command = ServiceResult.ROBOT_IN_STATION_WHEN_RECALL
     with pytest.raises(HomeAssistantError, match="ROBOT_IN_STATION_WHEN_RECALL"):

@@ -145,3 +145,22 @@ async def test_unreachable_host() -> None:
     with pytest.raises(NarwalConnectionError):
         await client.connect()
     await client.close()
+
+
+async def test_start_clean_without_rooms_sends_every_room(robot, robot_server) -> None:
+    fake, _ = robot_server
+    await robot.start_clean()
+    url, payload = fake.requests[-1]
+    assert url == "/clean/start_clean"
+    task = dict((f.num, f) for f in parse(parse(payload)[0].data))
+    items = [f for f in parse(parse(payload)[0].data) if f.num == 2]
+    room_ids = [parse(parse(item.data)[0].data)[1].int for item in items]
+    assert room_ids == [1, 2, 3, 4]
+    assert task[1].int == 1, "map id from the status"
+
+
+async def test_stop_and_locate_requests(robot, robot_server) -> None:
+    fake, _ = robot_server
+    await robot.stop()
+    await robot.locate()
+    assert fake.requests[-2:] == [("/task/force_end", b""), ("/common/yell", b"")]

@@ -10,8 +10,8 @@ cloud, no internet connection needed.
 
 **Status: early.** Tested with one robot on firmware `v01.09.05.04`, including
 a recorded full clean. Reading state, the live position and the clean report
-work; of the commands, return to dock, pause/resume, fan speed and mop humidity
-are verified. Starting a clean is not supported yet (see [Roadmap](#roadmap)).
+work, and so do all commands: start (whole home or chosen rooms), pause/resume,
+stop, return to dock, locate, fan speed and mop humidity.
 
 ## Installation (HACS)
 
@@ -29,7 +29,7 @@ Assistant `config/custom_components/` folder and restart.
 
 | Entity | Content |
 |---|---|
-| `vacuum.narwal` | state, pause, return to dock, fan speed (quiet … max); *start* resumes a paused clean |
+| `vacuum.narwal` | state, start (whole home, or resume when paused), pause, stop, return to dock, locate, fan speed (quiet … max), room cleaning with `vacuum.clean_area` |
 | `sensor.narwal_battery` | battery % |
 | `sensor.narwal_task` | current task (idle, vacuuming, mopping, returning, …) |
 | `sensor.narwal_cleaning_progress`, `_cleaned_area`, `_cleaning_time` | updated during a clean |
@@ -39,6 +39,7 @@ Assistant `config/custom_components/` folder and restart.
 | `sensor.narwal_charging_status`, `_error_code` | diagnostics |
 | `binary_sensor.narwal_charging`, `_maintenance_needed` | |
 | `select.narwal_mop_humidity` | dry / normal / wet |
+| `select.narwal_cleaning_mode` | how cleans started from Home Assistant run: vacuum and mop / vacuum / mop / vacuum, then mop |
 | `image.narwal_map` | the map: rooms with names, walls, doors, carpets, no-carpet areas, no-go zones, areas the robot cannot enter (darker), and icons for furniture, objects the camera recognised, dirty spots and the dock; during a clean also the robot and its path |
 | `sensor.narwal_detected_obstacles` | number of objects the camera recognised on the floor (cables, shoes, socks, pet waste, …); list in attribute `obstacles` |
 | `sensor.narwal_last_detected` | what was recognised, as text: `3× Cable, 2× Shoes, 1× Plastic bag` (in German: `3× Kabel, 2× Schuhe, 1× Plastiktüte`) |
@@ -81,10 +82,32 @@ now and then (a few times per clean); the integration reconnects at once and
 only marks the entities unavailable if that fails. Diagnostics can be downloaded
 from the device page (device token and ids are redacted).
 
+## Room cleaning
+
+The robot's rooms are offered to Home Assistant's area cleaning: open the
+vacuum entity's settings, choose **Map vacuum segments to areas** and assign
+each robot room (Living room, Kitchen, …) to one of your Home Assistant areas.
+Then clean areas from the vacuum card, voice assistants or automations:
+
+```yaml
+action: vacuum.clean_area
+target:
+  entity_id: vacuum.narwal
+data:
+  cleaning_area_id:
+    - kitchen
+    - hallway
+```
+
+Rooms are cleaned in the order given, with the robot's current fan speed and
+mop humidity and the mode from `select.narwal_cleaning_mode`. If rooms change
+in the app (renamed, split, merged), Home Assistant shows a repair asking you
+to update the mapping.
+
 ## Limitations
 
-- **Starting a new clean, room cleaning, stop and locate** are not available
-  yet; they are mapped out but not verified on a robot.
+- **Whole-home cleans** are sent as "every room of the current map" (the robot
+  accepts but ignores a whole-map request).
 - **Vacuum state** is derived from the robot's task status. *Docked*,
   *cleaning*, *paused* and *returning* are verified on a recorded clean;
   *error* still needs confirmation on a robot.
@@ -100,9 +123,9 @@ from the device page (device token and ids are redacted).
 
 ## Roadmap
 
-1. Verify start, room cleaning, stop and locate on a robot.
-2. Room cleaning through Home Assistant's `vacuum.clean_area` (map robot rooms
-   to Home Assistant areas).
+1. Station status as sensors (clean water, dirty water, dust bag, detergent).
+2. Readable error messages instead of codes.
+3. Discovery of the robot on the network (no IP to type in).
 
 ## Development
 
