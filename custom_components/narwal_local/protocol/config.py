@@ -11,8 +11,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import time
-from enum import StrEnum
+from enum import Enum, StrEnum, auto
 
+from .enums import CarpetStrategy, CornerCleaning, MopDrying, MopWashFrequency, ObstacleAvoidance
 from .pb import WIRE_LEN, WIRE_VARINT, Writer, parse
 
 URL_GET_CONFIG = "/config/get"
@@ -30,23 +31,58 @@ class Setting(StrEnum):
     QUIET_DUST_GATHERING = "quiet_dust_gathering"
     DRY_DUST_BAG = "dry_dust_bag"
     HOT_WATER_WASH = "hot_water_wash"
+    HEAVY_DIRT_DEEP_CLEAN = "heavy_dirt_deep_clean"
+    PET_MODE = "pet_mode"
+    CARPET_FIRST = "carpet_first"
+    CARPET_DEEP_CLEAN = "carpet_deep_clean"
+    STATION_LIGHT = "station_light"
+    CARPET_STRATEGY = "carpet_strategy"
+    MOP_DRYING = "mop_drying"
+    MOP_WASH_FREQUENCY = "mop_wash_frequency"
+    CORNER_CLEANING = "corner_cleaning"
+    OBSTACLE_AVOIDANCE = "obstacle_avoidance"
 
 
-# Setting -> (Config field, SetConfig_Request field)
-FIELDS: dict[Setting, tuple[int, int]] = {
-    Setting.VOLUME: (1, 1),  # volumePercentage
-    Setting.DO_NOT_DISTURB: (4, 5),  # disturbMode
-    Setting.AUTO_ADD_DETERGENT: (6, 7),  # autoAddDetergentEnabled
-    Setting.CHILD_LOCK: (7, 8),  # childLockEnabled
-    Setting.DUST_GATHERING: (27, 27),  # dustGatheringEnabled
-    Setting.QUIET_DUST_GATHERING: (30, 30),  # quietDustGatheringEnabled
-    Setting.DRY_DUST_BAG: (31, 31),  # dryRobotBagEnabled
-    Setting.HOT_WATER_WASH: (32, 32),  # hotWaterWashEnabled
+class Kind(Enum):
+    """How a setting is encoded."""
+
+    NUMBER = auto()  # plain int (volume)
+    DISTURB_MODE = auto()  # DisturbMode message
+    BOOL = auto()  # bool; left out of Config when off
+    TOGGLE = auto()  # two-value enum, 1 = off and 2 = on (…_DISABLE/…_ENABLE, LED_OFF/LED_ON)
+    ENUM = auto()  # enum with more options; 0 (unspecified) means not reported
+
+
+@dataclass(frozen=True, slots=True)
+class SettingInfo:
+    get_field: int  # in Config
+    set_field: int  # in SetConfig_Request
+    kind: Kind
+    enum: type[Enum] | None = None
+
+
+SETTINGS: dict[Setting, SettingInfo] = {
+    Setting.VOLUME: SettingInfo(1, 1, Kind.NUMBER),  # volumePercentage
+    Setting.DO_NOT_DISTURB: SettingInfo(4, 5, Kind.DISTURB_MODE),  # disturbMode
+    Setting.AUTO_ADD_DETERGENT: SettingInfo(6, 7, Kind.BOOL),  # autoAddDetergentEnabled
+    Setting.CHILD_LOCK: SettingInfo(7, 8, Kind.BOOL),  # childLockEnabled
+    Setting.MOP_DRYING: SettingInfo(12, 13, Kind.ENUM, MopDrying),  # dryMopStrength
+    Setting.MOP_WASH_FREQUENCY: SettingInfo(13, 14, Kind.ENUM, MopWashFrequency),  # cleanMopFreq
+    Setting.CARPET_STRATEGY: SettingInfo(15, 15, Kind.ENUM, CarpetStrategy),  # carpetCleanOption
+    Setting.PET_MODE: SettingInfo(22, 22, Kind.BOOL),  # petMode
+    Setting.DUST_GATHERING: SettingInfo(27, 27, Kind.BOOL),  # dustGatheringEnabled
+    Setting.QUIET_DUST_GATHERING: SettingInfo(30, 30, Kind.BOOL),  # quietDustGatheringEnabled
+    Setting.DRY_DUST_BAG: SettingInfo(31, 31, Kind.BOOL),  # dryRobotBagEnabled
+    Setting.HOT_WATER_WASH: SettingInfo(32, 32, Kind.BOOL),  # hotWaterWashEnabled
+    Setting.HEAVY_DIRT_DEEP_CLEAN: SettingInfo(33, 33, Kind.BOOL),  # massiveDirtyDeepCleanEnable
+    Setting.OBSTACLE_AVOIDANCE: SettingInfo(34, 34, Kind.ENUM, ObstacleAvoidance),  # avoidMode
+    Setting.CORNER_CLEANING: SettingInfo(41, 41, Kind.ENUM, CornerCleaning),  # cornerCleanMode
+    Setting.CARPET_FIRST: SettingInfo(46, 45, Kind.TOGGLE),  # carpetCleanPriorityOption
+    Setting.CARPET_DEEP_CLEAN: SettingInfo(47, 46, Kind.TOGGLE),  # carpetDeepCleanOption
+    Setting.STATION_LIGHT: SettingInfo(51, 49, Kind.TOGGLE),  # stationLightCtrlType
 }
 
-BOOL_SETTINGS: tuple[Setting, ...] = tuple(
-    s for s in Setting if s not in (Setting.VOLUME, Setting.DO_NOT_DISTURB)
-)
+TOGGLE_OFF, TOGGLE_ON = 1, 2
 
 
 def _seconds(t: time) -> int:
@@ -80,20 +116,39 @@ class DisturbMode:
 
 @dataclass(slots=True)
 class RobotConfig:
-    """The decoded Config message. Proto3 leaves out false/zero values, so a
-    missing flag reads as off."""
+    """The decoded Config message.
+
+    Proto3 leaves out false/zero values: a missing BOOL reads as off, while a
+    TOGGLE or ENUM setting the robot does not send is not in `reported` (the
+    robot does not have it).
+    """
 
     volume: int = 0
     do_not_disturb: DisturbMode = field(default_factory=DisturbMode)
-    flags: dict[Setting, bool] = field(default_factory=dict)
+    flags: dict[Setting, bool] = field(default_factory=dict)  # BOOL and TOGGLE settings
+    options: dict[Setting, Enum | int] = field(default_factory=dict)  # ENUM settings
+    reported: set[Setting] = field(default_factory=set)
     raw_fields: dict[int, int] = field(default_factory=dict)
 
-    def value(self, setting: Setting) -> int | bool | DisturbMode:
+    def value(self, setting: Setting) -> int | bool | DisturbMode | Enum | None:
         if setting is Setting.VOLUME:
             return self.volume
         if setting is Setting.DO_NOT_DISTURB:
             return self.do_not_disturb
-        return self.flags.get(setting, False)
+        if SETTINGS[setting].kind is Kind.ENUM:
+            return self.options.get(setting)
+        return self.flags.get(setting)
+
+    def has(self, setting: Setting) -> bool:
+        """Whether the robot has this setting (BOOLs always count)."""
+        return SETTINGS[setting].kind is Kind.BOOL or setting in self.reported
+
+
+def _from_value(enum: type[Enum], value: int) -> Enum | int:
+    try:
+        return enum(value)
+    except ValueError:
+        return value
 
 
 def decode_config(payload: bytes) -> RobotConfig:
@@ -103,36 +158,57 @@ def decode_config(payload: bytes) -> RobotConfig:
     config = RobotConfig()
     if body is None:
         return config
-    get_field = {get: s for s, (get, _) in FIELDS.items()}
+    by_get_field = {info.get_field: s for s, info in SETTINGS.items()}
     for f in parse(body):
         if f.wtype == WIRE_VARINT:
             config.raw_fields[f.num] = f.int
-        setting = get_field.get(f.num)
-        if setting is Setting.VOLUME and f.wtype == WIRE_VARINT:
+        setting = by_get_field.get(f.num)
+        if setting is None:
+            continue
+        kind = SETTINGS[setting].kind
+        if kind is Kind.DISTURB_MODE:
+            if f.wtype == WIRE_LEN:
+                config.do_not_disturb = DisturbMode.decode(f.value)
+                config.reported.add(setting)
+            continue
+        if f.wtype != WIRE_VARINT:
+            continue
+        config.reported.add(setting)
+        if kind is Kind.NUMBER:
             config.volume = f.int
-        elif setting is Setting.DO_NOT_DISTURB and f.wtype == WIRE_LEN:
-            config.do_not_disturb = DisturbMode.decode(f.value)
-        elif setting is not None and f.wtype == WIRE_VARINT:
+        elif kind is Kind.BOOL:
             config.flags[setting] = bool(f.int)
-    for setting in BOOL_SETTINGS:
-        config.flags.setdefault(setting, False)
+        elif kind is Kind.TOGGLE:
+            config.flags[setting] = f.int == TOGGLE_ON
+        else:
+            config.options[setting] = _from_value(SETTINGS[setting].enum, f.int)
+    for setting, info in SETTINGS.items():
+        if info.kind is Kind.BOOL:
+            config.flags.setdefault(setting, False)
     return config
 
 
-def build_set_config_request(setting: Setting, value: int | bool | DisturbMode) -> bytes:
+def build_set_config_request(setting: Setting, value: int | bool | DisturbMode | Enum) -> bytes:
     """One SetConfig_Request. A oneof member is written even when it holds
     the default (false / 0), which is how the robot tells "set to off" from
     "nothing set"."""
-    num = FIELDS[setting][1]
+    info = SETTINGS[setting]
     w = Writer()
-    if setting is Setting.DO_NOT_DISTURB:
-        if not isinstance(value, DisturbMode):
-            raise TypeError("do_not_disturb takes a DisturbMode")
-        w.bytes_(num, value.encode())
-    elif setting is Setting.VOLUME:
-        if not 0 <= int(value) <= 100:
-            raise ValueError("volume is a percentage")
-        w.varint(num, int(value), force=True)
-    else:
-        w.varint(num, 1 if value else 0, force=True)
+    match info.kind:
+        case Kind.DISTURB_MODE:
+            if not isinstance(value, DisturbMode):
+                raise TypeError("do_not_disturb takes a DisturbMode")
+            w.bytes_(info.set_field, value.encode())
+        case Kind.NUMBER:
+            if not 0 <= int(value) <= 100:
+                raise ValueError("volume is a percentage")
+            w.varint(info.set_field, int(value), force=True)
+        case Kind.BOOL:
+            w.varint(info.set_field, 1 if value else 0, force=True)
+        case Kind.TOGGLE:
+            w.varint(info.set_field, TOGGLE_ON if value else TOGGLE_OFF, force=True)
+        case Kind.ENUM:
+            if int(value) <= 0:
+                raise ValueError(f"{setting} needs one of its options, not {value!r}")
+            w.varint(info.set_field, int(value), force=True)
     return bytes(w)

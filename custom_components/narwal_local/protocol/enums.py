@@ -365,3 +365,52 @@ class BagState(_NamedIntEnum):
     NOT_INSTALLED = 2
     REPLACE_SUGGESTED = 3
     ABNORMAL = 4
+
+
+# --- Settings (Config) with more than two options ---------------------------------
+
+
+class CarpetStrategy(_NamedIntEnum):
+    """Config.carpetCleanOption: what the robot does on carpets."""
+
+    UNSPECIFIED = 0
+    CROSS = 1  # lift the mop and drive across without cleaning
+    BOOST = 2  # clean with more suction
+    IGNORE = 3  # treat like any other floor
+    AVOID = 4
+
+
+class MopDrying(_NamedIntEnum):
+    """Config.dryMopStrength."""
+
+    UNSPECIFIED = 0
+    QUIET = 1
+    STRONG = 2
+    SMART = 3  # strong, but quiet during do-not-disturb
+
+
+class MopWashFrequency(_NamedIntEnum):
+    """Config.cleanMopFreq: how often the mop is washed during a clean."""
+
+    UNSPECIFIED = 0
+    EFFICIENT = 1
+    NORMAL = 2
+    DEEP = 3
+
+
+class CornerCleaning(_NamedIntEnum):
+    """Config.cornerCleanMode."""
+
+    UNSPECIFIED = 0
+    FLEXIBLE_MOP = 1  # the extending mop reaches into corners
+    TURN_ROBOT = 2  # the robot turns in corners
+    OFF = 3
+
+
+class ObstacleAvoidance(_NamedIntEnum):
+    """Config.avoidMode."""
+
+    UNSPECIFIED = 0
+    SMART = 1
+    CAREFUL = 2  # keeps more distance
+    OFF = 3

@@ -129,6 +129,47 @@
           "mop": "Mop",
           "vacuum_then_mop": "Vacuum, then mop"
         }
+      },
+      "carpet_strategy": {
+        "name": "Carpets",
+        "state": {
+          "boost": "Clean with more suction",
+          "cross": "Cross without cleaning",
+          "ignore": "Treat as floor",
+          "avoid": "Avoid"
+        }
+      },
+      "mop_drying": {
+        "name": "Mop drying",
+        "state": {
+          "quiet": "Quiet",
+          "strong": "Strong",
+          "smart": "Smart"
+        }
+      },
+      "mop_wash_frequency": {
+        "name": "Mop washing",
+        "state": {
+          "efficient": "Less often (faster)",
+          "normal": "Normal",
+          "deep": "More often (more thorough)"
+        }
+      },
+      "corner_cleaning": {
+        "name": "Corner cleaning",
+        "state": {
+          "flexible_mop": "Extending mop",
+          "turn_robot": "Turn in corners",
+          "off": "Off"
+        }
+      },
+      "obstacle_avoidance": {
+        "name": "Obstacle avoidance",
+        "state": {
+          "smart": "Smart",
+          "careful": "Careful (more distance)",
+          "off": "Off"
+        }
       }
     },
     "sensor": {
@@ -326,6 +367,21 @@
       },
       "hot_water_wash": {
         "name": "Hot water mop wash"
+      },
+      "heavy_dirt_deep_clean": {
+        "name": "Deep clean heavy dirt"
+      },
+      "pet_mode": {
+        "name": "Pet mode"
+      },
+      "carpet_first": {
+        "name": "Carpets first"
+      },
+      "carpet_deep_clean": {
+        "name": "Deep carpet cleaning"
+      },
+      "station_light": {
+        "name": "Station light"
       }
     },
     "time": {
@@ -364,9 +420,45 @@
     },
     "invalid_fan_speed": {
       "message": "Unknown fan speed: {fan_speed}"
+    },
+    "entry_not_loaded": {
+      "message": "The robot is not set up or not loaded."
+    },
+    "nothing_due": {
+      "message": "No part is due for maintenance or replacement."
+    },
+    "not_due": {
+      "message": "{item} is not due, so there is no reminder to clear."
     }
   },
   "selector": {
+    "consumable": {
+      "options": {
+        "anti_winding_brush": "Anti-tangle brush",
+        "clear_water_filter": "Clean water filter",
+        "cliff_sensor": "Cliff sensors",
+        "curing_agent": "Care agent",
+        "detergent": "Detergent",
+        "dirty_water": "Dirty water tank",
+        "dust_bag": "Dust bag",
+        "dust_box": "Dust box",
+        "dust_container": "Dust container",
+        "dust_filter": "Dust filter",
+        "heavy_detergent": "Heavy-duty detergent",
+        "inner_dust_box": "Inner dust box",
+        "mop": "Mop",
+        "roller_brush": "Main brush",
+        "side_brush": "Side brush",
+        "side_distance_sensor": "Side distance sensor",
+        "silver_ions": "Silver ion module",
+        "smart_module_filter": "Smart module filter",
+        "smart_module_sponge": "Smart module sponge",
+        "station_bag": "Station dust bag",
+        "universal_wheel": "Swivel wheel",
+        "wash_ribs": "Washing ribs",
+        "water_tank_sponge": "Water tank sponge"
+      }
+    },
     "dirt_type": {
       "options": {
         "unspecified": "Dirt",
@@ -466,6 +558,22 @@
         "pet_cat": "Cat",
         "pet_dog": "Dog",
         "none": "None"
+      }
+    }
+  },
+  "services": {
+    "reset_consumables": {
+      "name": "Reset consumable reminders",
+      "description": "Tells the robot that parts were cleaned or replaced, which clears their reminders. Without parts, all due reminders are cleared. The lifetime shown in the Narwal app is kept in Narwal's cloud and does not change.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Robot",
+          "description": "The robot whose reminders to clear."
+        },
+        "items": {
+          "name": "Parts",
+          "description": "Parts you cleaned or replaced. Leave empty for all due parts."
+        }
       }
     }
   }

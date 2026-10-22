@@ -28,7 +28,7 @@ from .enums import (
     TaskType,
 )
 from .features import FEATURE_IS_BOOL, FEATURE_NAMES
-from .pb import WIRE_FIXED32, WIRE_VARINT, parse, parse_packed_varints
+from .pb import WIRE_FIXED32, WIRE_VARINT, Writer, encode_varint, parse, parse_packed_varints
 
 
 def decode_result(payload: bytes) -> ServiceResult | int:
@@ -362,6 +362,28 @@ def decode_consumable_info(payload: bytes) -> ConsumableInfo:
         elif f.num == 2:
             ci.unified_error_code = f.int
     return ci
+
+
+def build_reset_consumables_request(maintain: list[str], replace: list[str]) -> bytes:
+    """ResetConsumableInfo_Request{1 ConsumableInfoPayload{1 maintainItems,
+    2 replaceItems}} for the given item names (packed enums). This clears the
+    robot's reminder only; the lifetime the Narwal app shows is kept in
+    Narwal's cloud."""
+    maintain_ids = {name: num for num, name in MAINTAIN_ITEM_NAMES.items()}
+    replace_ids = {name: num for num, name in REPLACE_ITEM_NAMES.items()}
+
+    def packed(names: list[str], ids: dict[str, int]) -> bytes:
+        try:
+            return b"".join(encode_varint(ids[name]) for name in names)
+        except KeyError as err:
+            raise ValueError(f"unknown consumable {err.args[0]!r}") from None
+
+    payload = Writer()
+    if maintain:
+        payload.bytes_(1, packed(maintain, maintain_ids))
+    if replace:
+        payload.bytes_(2, packed(replace, replace_ids))
+    return bytes(Writer().message(1, payload))
 
 
 @dataclass(slots=True, frozen=True)

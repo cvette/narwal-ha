@@ -1,4 +1,4 @@
-"""Settings entities (switch, number, time) and the clean-finished event."""
+"""Settings entities (switch, select, number, time) and the clean-finished event."""
 
 from __future__ import annotations
 
@@ -7,13 +7,14 @@ from datetime import UTC, datetime, time
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from homeassistant.components.number import ATTR_VALUE, SERVICE_SET_VALUE
+from homeassistant.components.select import ATTR_OPTION, ATTR_OPTIONS, SERVICE_SELECT_OPTION
 from homeassistant.components.switch import SERVICE_TURN_OFF, SERVICE_TURN_ON
 from homeassistant.components.time import ATTR_TIME
 from homeassistant.const import ATTR_ENTITY_ID, STATE_OFF, STATE_ON, STATE_UNKNOWN
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
 
-from custom_components.narwal_local.protocol import DisturbMode, Setting
+from custom_components.narwal_local.protocol import CarpetStrategy, DisturbMode, Setting
 
 from .conftest import FakeRobot, clean_report_payload
 
@@ -118,3 +119,65 @@ async def test_clean_finished_event(hass: HomeAssistant, init_integration, robot
     state = hass.states.get(EVENT)
     assert state.attributes["event_type"] == "stopped"
     assert state.attributes["clean_type"] == "custom"
+
+
+async def test_more_setting_switches(hass: HomeAssistant, init_integration, robot: FakeRobot) -> None:
+    expected = {
+        "deep_clean_heavy_dirt": STATE_ON,
+        "pet_mode": STATE_OFF,
+        "carpets_first": STATE_OFF,
+        "deep_carpet_cleaning": STATE_OFF,
+        "station_light": STATE_ON,
+    }
+    for key, state in expected.items():
+        assert hass.states.get(f"switch.narwal_{key}").state == state, key
+
+    await _call(hass, "switch", SERVICE_TURN_OFF, "switch.narwal_station_light")
+    assert robot.calls[-1] == ("set_config", Setting.STATION_LIGHT, False)
+    assert hass.states.get("switch.narwal_station_light").state == STATE_OFF
+
+
+async def test_setting_selects(hass: HomeAssistant, init_integration, robot: FakeRobot) -> None:
+    expected = {
+        "carpets": "boost",
+        "mop_drying": "quiet",
+        "mop_washing": "normal",
+        "corner_cleaning": "flexible_mop",
+        "obstacle_avoidance": "smart",
+    }
+    for key, option in expected.items():
+        assert hass.states.get(f"select.narwal_{key}").state == option, key
+    assert hass.states.get("select.narwal_carpets").attributes[ATTR_OPTIONS] == [
+        "cross", "boost", "ignore", "avoid"
+    ]  # fmt: skip
+
+    await _call(hass, "select", SERVICE_SELECT_OPTION, "select.narwal_carpets", **{ATTR_OPTION: "avoid"})
+    assert robot.calls[-1] == ("set_config", Setting.CARPET_STRATEGY, CarpetStrategy.AVOID)
+    assert hass.states.get("select.narwal_carpets").state == "avoid"
+
+
+async def test_options_follow_feature_flags(
+    hass: HomeAssistant, robot: FakeRobot, config_entry: MockConfigEntry
+) -> None:
+    robot.features.flags["supportFlexibleMop"] = False
+    robot.features.flags["supportAvoidModeConfig"] = False
+    config_entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(config_entry.entry_id)
+    await hass.async_block_till_done()
+    assert hass.states.get("select.narwal_obstacle_avoidance") is None
+    corner = hass.states.get("select.narwal_corner_cleaning")
+    assert corner.attributes[ATTR_OPTIONS] == ["turn_robot", "off"]
+    assert corner.state == "unknown", "the robot's value is not offered here"
+
+
+async def test_settings_the_robot_does_not_report(
+    hass: HomeAssistant, robot: FakeRobot, config_entry: MockConfigEntry
+) -> None:
+    robot.config.reported.discard(Setting.CARPET_FIRST)
+    robot.config.reported.discard(Setting.MOP_DRYING)
+    config_entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(config_entry.entry_id)
+    await hass.async_block_till_done()
+    assert hass.states.get("switch.narwal_carpets_first") is None
+    assert hass.states.get("select.narwal_mop_drying") is None
+    assert hass.states.get("select.narwal_mop_washing") is not None

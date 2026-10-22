@@ -29,6 +29,7 @@ from custom_components.narwal_local.protocol import (  # noqa: E402
     Setting,
     decode_config,
 )
+from custom_components.narwal_local.protocol.config import SETTINGS, Kind  # noqa: E402
 from custom_components.narwal_local.protocol.frame import Header  # noqa: E402
 from custom_components.narwal_local.protocol.map import decode_get_map_response  # noqa: E402
 from custom_components.narwal_local.protocol.models import (  # noqa: E402
@@ -127,7 +128,7 @@ class FakeRobot:
         self._ensure()
         if not self.config_supported:
             raise NarwalCommandError("/config/get", ServiceResult.PERFORM_GENERAL_FAILED)
-        return replace(self.config, flags=dict(self.config.flags))
+        return replace(self.config, flags=dict(self.config.flags), options=dict(self.config.options))
 
     async def activate_reporting(self, seconds: int = 60):
         self._ensure()
@@ -161,8 +162,18 @@ class FakeRobot:
             self.config.volume = value
         elif setting is Setting.DO_NOT_DISTURB:
             self.config.do_not_disturb = value
+        elif SETTINGS[setting].kind is Kind.ENUM:
+            self.config.options[setting] = value
         else:
             self.config.flags[setting] = value
+
+    async def reset_consumables(self, maintain_items=(), replace_items=()):
+        await self._command("reset_consumables", list(maintain_items), list(replace_items))
+        self.consumables = replace(
+            self.consumables,
+            maintain_items=[i for i in self.consumables.maintain_items if i not in maintain_items],
+            replace_items=[i for i in self.consumables.replace_items if i not in replace_items],
+        )
 
     async def start_clean(self, rooms=None, *, mode=None, **_):
         await self._command("start_clean", list(rooms) if rooms else None, mode)
@@ -237,11 +248,15 @@ def clean_report_payload(
 
 def config_payload() -> bytes:
     """A GetConfig response like the real robot's: volume 20 %, do-not-disturb
-    22:00-08:00, auto-detergent, auto-empty, bag drying and hot water on."""
+    22:00-08:00, auto-detergent, auto-empty, bag drying, hot water and heavy
+    dirt deep clean on; quiet drying, normal mop washing, carpet boost, smart
+    avoidance, extending mop in corners, carpets-first and deep carpet clean
+    off, station light on."""
     dnd = DisturbMode(True)
     config = Writer().varint(1, 20).varint(2, 1).message(4, dnd.encode())
-    for num in (6, 8, 27, 31, 32):
-        config.varint(num, 1)
+    for num, value in ((6, 1), (8, 1), (12, 1), (13, 2), (15, 2), (27, 1), (31, 1), (32, 1),
+                       (33, 1), (34, 1), (41, 1), (46, 1), (47, 1), (51, 2)):  # fmt: skip
+        config.varint(num, value)
     return bytes(Writer().varint(1, 1).message(2, config))
 
 

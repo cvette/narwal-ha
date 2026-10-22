@@ -35,6 +35,7 @@ from .models import (
     FeatureList,
     FirmwareVersion,
     RobotBaseStatus,
+    build_reset_consumables_request,
     decode_check_firmware,
     decode_consumable_info,
     decode_device_base_status,
@@ -329,6 +330,14 @@ class NarwalRobot(NarwalClient):
 
     async def set_mop_humidity(self, humidity: MopHumidity) -> None:
         await self._command("/clean/set_mop_humidity", bytes(Writer().int32(1, int(humidity), force=True)))
+
+    async def reset_consumables(self, maintain: list[str] = (), replace: list[str] = ()) -> None:
+        """Clear the robot's maintenance / replacement reminders for these
+        items (names as in ConsumableInfo)."""
+        await self._command(
+            "/consumable/reset_consumable_info",
+            build_reset_consumables_request(list(maintain), list(replace)),
+        )
 
     async def set_config(self, setting: Setting, value: int | bool | DisturbMode) -> None:
         """Change one setting (/config/set takes one per call)."""

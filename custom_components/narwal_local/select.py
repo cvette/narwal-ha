@@ -2,14 +2,18 @@
 
 from __future__ import annotations
 
-from homeassistant.components.select import SelectEntity
+from dataclasses import dataclass
+
+from homeassistant.components.select import SelectEntity, SelectEntityDescription
+from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
 
 from .coordinator import NarwalConfigEntry, NarwalCoordinator
 from .entity import NarwalEntity
-from .protocol import CleanMode, MopHumidity
+from .protocol import CleanMode, CornerCleaning, MopHumidity, Setting
+from .protocol.config import SETTINGS
 
 PARALLEL_UPDATES = 1
 
@@ -27,7 +31,18 @@ async def async_setup_entry(
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     coordinator = entry.runtime_data
-    async_add_entities([NarwalMopHumiditySelect(coordinator), NarwalCleanModeSelect(coordinator)])
+    entities: list[SelectEntity] = [
+        NarwalMopHumiditySelect(coordinator),
+        NarwalCleanModeSelect(coordinator),
+    ]
+    if (config := coordinator.data.config) is not None:
+        features = coordinator.static.features
+        entities.extend(
+            NarwalSettingSelect(coordinator, d)
+            for d in SETTING_SELECTS
+            if (d.feature is None or features.supports(d.feature)) and config.has(d.setting)
+        )
+    async_add_entities(entities)
 
 
 class NarwalMopHumiditySelect(NarwalEntity, SelectEntity):
@@ -80,3 +95,68 @@ class NarwalCleanModeSelect(NarwalEntity, SelectEntity, RestoreEntity):
     async def async_select_option(self, option: str) -> None:
         self.coordinator.clean_mode = CLEAN_MODES[option]
         self.async_write_ha_state()
+
+
+@dataclass(frozen=True, kw_only=True)
+class NarwalSettingSelectDescription(SelectEntityDescription):
+    setting: Setting
+    feature: str | None = None  # feature flag the robot must report
+    # Option -> feature flag it needs, for options only some robots have.
+    option_features: dict[str, str] | None = None
+
+
+SETTING_SELECTS: tuple[NarwalSettingSelectDescription, ...] = (
+    NarwalSettingSelectDescription(
+        key="carpet_strategy", setting=Setting.CARPET_STRATEGY, feature="supportCarpetCleanSetting"
+    ),
+    NarwalSettingSelectDescription(key="mop_drying", setting=Setting.MOP_DRYING),
+    NarwalSettingSelectDescription(key="mop_wash_frequency", setting=Setting.MOP_WASH_FREQUENCY),
+    NarwalSettingSelectDescription(
+        key="corner_cleaning",
+        setting=Setting.CORNER_CLEANING,
+        feature="supportCornerClean",
+        option_features={CornerCleaning.FLEXIBLE_MOP.name.lower(): "supportFlexibleMop"},
+    ),
+    NarwalSettingSelectDescription(
+        key="obstacle_avoidance", setting=Setting.OBSTACLE_AVOIDANCE, feature="supportAvoidModeConfig"
+    ),
+)
+
+
+class NarwalSettingSelect(NarwalEntity, SelectEntity):
+    """A robot setting with several options; the option keys are the enum's
+    member names in lowercase."""
+
+    _attr_entity_category = EntityCategory.CONFIG
+    entity_description: NarwalSettingSelectDescription
+
+    def __init__(
+        self, coordinator: NarwalCoordinator, description: NarwalSettingSelectDescription
+    ) -> None:
+        super().__init__(coordinator, description.key)
+        self.entity_description = description
+        self._attr_translation_key = description.key
+        self._enum = SETTINGS[description.setting].enum
+        features = coordinator.static.features
+        needs = description.option_features or {}
+        options = [member.name.lower() for member in self._enum if member.value]
+        self._attr_options = [
+            option for option in options if option not in needs or features.supports(needs[option])
+        ]
+
+    @property
+    def available(self) -> bool:
+        return super().available and self.coordinator.data.config is not None
+
+    @property
+    def current_option(self) -> str | None:
+        if (config := self.coordinator.data.config) is None:
+            return None
+        value = config.options.get(self.entity_description.setting)
+        name = getattr(value, "name", None)
+        return name.lower() if name and name.lower() in self.options else None
+
+    async def async_select_option(self, option: str) -> None:
+        await self.coordinator.async_set_config(
+            self.entity_description.setting, self._enum[option.upper()]
+        )

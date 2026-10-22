@@ -129,6 +129,47 @@
           "mop": "Wischen",
           "vacuum_then_mop": "Erst saugen, dann wischen"
         }
+      },
+      "carpet_strategy": {
+        "name": "Teppiche",
+        "state": {
+          "boost": "Mit mehr Saugkraft reinigen",
+          "cross": "Überqueren ohne Reinigung",
+          "ignore": "Wie Boden behandeln",
+          "avoid": "Meiden"
+        }
+      },
+      "mop_drying": {
+        "name": "Mopptrocknung",
+        "state": {
+          "quiet": "Leise",
+          "strong": "Stark",
+          "smart": "Intelligent"
+        }
+      },
+      "mop_wash_frequency": {
+        "name": "Moppwäsche",
+        "state": {
+          "efficient": "Seltener (schneller)",
+          "normal": "Normal",
+          "deep": "Häufiger (gründlicher)"
+        }
+      },
+      "corner_cleaning": {
+        "name": "Eckenreinigung",
+        "state": {
+          "flexible_mop": "Ausfahrender Mopp",
+          "turn_robot": "In Ecken drehen",
+          "off": "Aus"
+        }
+      },
+      "obstacle_avoidance": {
+        "name": "Hindernisvermeidung",
+        "state": {
+          "smart": "Intelligent",
+          "careful": "Vorsichtig (mehr Abstand)",
+          "off": "Aus"
+        }
       }
     },
     "sensor": {
@@ -326,6 +367,21 @@
       },
       "hot_water_wash": {
         "name": "Mopp-Wäsche mit heißem Wasser"
+      },
+      "heavy_dirt_deep_clean": {
+        "name": "Starke Verschmutzung gründlich reinigen"
+      },
+      "pet_mode": {
+        "name": "Haustiermodus"
+      },
+      "carpet_first": {
+        "name": "Teppiche zuerst"
+      },
+      "carpet_deep_clean": {
+        "name": "Teppich-Tiefenreinigung"
+      },
+      "station_light": {
+        "name": "Stationsbeleuchtung"
       }
     },
     "time": {
@@ -364,9 +420,45 @@
     },
     "invalid_fan_speed": {
       "message": "Unbekannte Saugstufe: {fan_speed}"
+    },
+    "entry_not_loaded": {
+      "message": "Der Roboter ist nicht eingerichtet oder nicht geladen."
+    },
+    "nothing_due": {
+      "message": "Kein Teil ist zur Wartung oder zum Austausch fällig."
+    },
+    "not_due": {
+      "message": "{item} ist nicht fällig, es gibt keine Erinnerung zum Löschen."
     }
   },
   "selector": {
+    "consumable": {
+      "options": {
+        "anti_winding_brush": "Anti-Verwicklungsbürste",
+        "clear_water_filter": "Frischwasserfilter",
+        "cliff_sensor": "Absturzsensoren",
+        "curing_agent": "Pflegemittel",
+        "detergent": "Reinigungsmittel",
+        "dirty_water": "Schmutzwassertank",
+        "dust_bag": "Staubbeutel",
+        "dust_box": "Staubbehälter",
+        "dust_container": "Staubsammler",
+        "dust_filter": "Staubfilter",
+        "heavy_detergent": "Intensiv-Reinigungsmittel",
+        "inner_dust_box": "Innerer Staubbehälter",
+        "mop": "Mopp",
+        "roller_brush": "Hauptbürste",
+        "side_brush": "Seitenbürste",
+        "side_distance_sensor": "Seitlicher Abstandssensor",
+        "silver_ions": "Silberionen-Modul",
+        "smart_module_filter": "Filter des Smart-Moduls",
+        "smart_module_sponge": "Schwamm des Smart-Moduls",
+        "station_bag": "Staubbeutel der Station",
+        "universal_wheel": "Schwenkrad",
+        "wash_ribs": "Waschrippen",
+        "water_tank_sponge": "Wassertank-Schwamm"
+      }
+    },
     "dirt_type": {
       "options": {
         "unspecified": "Verschmutzung",
@@ -466,6 +558,22 @@
         "pet_cat": "Katze",
         "pet_dog": "Hund",
         "none": "Keine"
+      }
+    }
+  },
+  "services": {
+    "reset_consumables": {
+      "name": "Verbrauchsteil-Erinnerungen zurücksetzen",
+      "description": "Teilt dem Roboter mit, dass Teile gereinigt oder ersetzt wurden, und löscht damit ihre Erinnerungen. Ohne Angabe von Teilen werden alle fälligen Erinnerungen gelöscht. Die Lebensdauer in der Narwal-App liegt in Narwals Cloud und ändert sich nicht.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Roboter",
+          "description": "Der Roboter, dessen Erinnerungen gelöscht werden."
+        },
+        "items": {
+          "name": "Teile",
+          "description": "Gereinigte oder ersetzte Teile. Leer lassen für alle fälligen Teile."
+        }
       }
     }
   }

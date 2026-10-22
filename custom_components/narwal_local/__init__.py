@@ -5,13 +5,15 @@ from __future__ import annotations
 from homeassistant.const import CONF_HOST, CONF_PORT, Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
-from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers import config_validation as cv, entity_registry as er
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.typing import ConfigType
 
 from .const import DEFAULT_PORT, DOMAIN, REPORT_SECONDS
 from .coordinator import NarwalConfigEntry, NarwalCoordinator, NarwalStatic
 from .map_objects import async_load_names
 from .protocol import NarwalError, NarwalRobot
+from .services import async_setup_services
 
 PLATFORMS: list[Platform] = [
     Platform.BINARY_SENSOR,
@@ -25,6 +27,15 @@ PLATFORMS: list[Platform] = [
     Platform.TIME,
     Platform.VACUUM,
 ]
+
+
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
+
+
+async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
+    """Register the integration's actions once, for all robots."""
+    async_setup_services(hass)
+    return True
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: NarwalConfigEntry) -> bool:

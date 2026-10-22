@@ -1,5 +1,5 @@
-"""Furniture, camera detections and the dock as plain data for attributes,
-with display names in Home Assistant's language."""
+"""Furniture, camera detections, the dock and consumable parts as plain data
+for attributes, with display names in Home Assistant's language."""
 
 from __future__ import annotations
 
@@ -28,6 +28,7 @@ class ObjectNames:
     obstacles: dict[str, str] = field(default_factory=dict)
     furniture: dict[str, str] = field(default_factory=dict)
     dirt: dict[str, str] = field(default_factory=dict)
+    consumables: dict[str, str] = field(default_factory=dict)
 
     def obstacle(self, label: Any) -> str:
         key = type_name(label)
@@ -40,6 +41,9 @@ class ObjectNames:
     def dirt_name(self, label: Any) -> str:
         key = type_name(label)
         return self.dirt.get(key, key)
+
+    def consumable(self, item: str) -> str:
+        return self.consumables.get(item, item)
 
     @property
     def none(self) -> str:
@@ -54,7 +58,9 @@ async def async_load_names(hass: HomeAssistant) -> ObjectNames:
         prefix = f"component.{DOMAIN}.selector.{kind}.options."
         return {k.removeprefix(prefix): v for k, v in strings.items() if k.startswith(prefix)}
 
-    return ObjectNames(table("obstacle_type"), table("furniture_type"), table("dirt_type"))
+    return ObjectNames(
+        table("obstacle_type"), table("furniture_type"), table("dirt_type"), table("consumable")
+    )
 
 
 def room_name_at(mi: MapInfo, x: float, y: float) -> str | None:

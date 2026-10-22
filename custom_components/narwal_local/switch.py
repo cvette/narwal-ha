@@ -37,6 +37,21 @@ SWITCHES: tuple[NarwalSwitchDescription, ...] = (
     NarwalSwitchDescription(
         key="hot_water_wash", setting=Setting.HOT_WATER_WASH, feature="supportHotWaterWash"
     ),
+    NarwalSwitchDescription(
+        key="heavy_dirt_deep_clean",
+        setting=Setting.HEAVY_DIRT_DEEP_CLEAN,
+        feature="supportMassiveDeepClean",
+    ),
+    NarwalSwitchDescription(key="pet_mode", setting=Setting.PET_MODE, feature="supportPetMode"),
+    NarwalSwitchDescription(
+        key="carpet_first",
+        setting=Setting.CARPET_FIRST,
+        feature="supportCarpetCleanPriorityConfig",
+    ),
+    NarwalSwitchDescription(
+        key="carpet_deep_clean", setting=Setting.CARPET_DEEP_CLEAN, feature="supportCarpetDeepClean"
+    ),
+    NarwalSwitchDescription(key="station_light", setting=Setting.STATION_LIGHT),
 )
 
 
@@ -46,13 +61,13 @@ async def async_setup_entry(
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     coordinator = entry.runtime_data
-    if coordinator.data.config is None:
+    if (config := coordinator.data.config) is None:
         return
     features = coordinator.static.features
     async_add_entities(
         NarwalSettingSwitch(coordinator, d)
         for d in SWITCHES
-        if d.feature is None or features.supports(d.feature)
+        if (d.feature is None or features.supports(d.feature)) and config.has(d.setting)
     )
 
 

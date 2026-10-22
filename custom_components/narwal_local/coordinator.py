@@ -183,6 +183,11 @@ class NarwalCoordinator(DataUpdateCoordinator[NarwalData]):
             _LOGGER.debug("Reading the settings failed: %s", err)
             return previous
 
+    async def async_refresh_consumables(self) -> None:
+        """Re-read the due parts now, e.g. after a reset."""
+        self._consumables_due = dt_util.utcnow()
+        await self.async_request_refresh()
+
     async def async_set_config(self, setting: Setting, value: object) -> None:
         """Change a setting, then read the settings back so the entities show
         what the robot actually stored."""

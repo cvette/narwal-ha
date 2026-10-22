@@ -1,0 +1,36 @@
+reset_consumables:
+  fields:
+    config_entry_id:
+      required: true
+      selector:
+        config_entry:
+          integration: narwal_local
+    items:
+      selector:
+        select:
+          multiple: true
+          translation_key: consumable
+          options:
+            - anti_winding_brush
+            - clear_water_filter
+            - cliff_sensor
+            - curing_agent
+            - detergent
+            - dirty_water
+            - dust_bag
+            - dust_box
+            - dust_container
+            - dust_filter
+            - heavy_detergent
+            - inner_dust_box
+            - mop
+            - roller_brush
+            - side_brush
+            - side_distance_sensor
+            - silver_ions
+            - smart_module_filter
+            - smart_module_sponge
+            - station_bag
+            - universal_wheel
+            - wash_ribs
+            - water_tank_sponge

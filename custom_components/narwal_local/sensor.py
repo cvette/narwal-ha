@@ -50,6 +50,11 @@ def _enum_state(value: Any, options: list[str]) -> str | None:
     return name.lower() if name and name.lower() in options else None
 
 
+def _consumable_attrs(data: NarwalData, items: list[str]) -> dict[str, Any]:
+    """Item keys for automations and the reset action, plus readable names."""
+    return {"items": items, "names": [data.names.consumable(item) for item in items]}
+
+
 @dataclass(frozen=True, kw_only=True)
 class NarwalSensorDescription(SensorEntityDescription):
     value_fn: Callable[[NarwalData], StateType]
@@ -134,14 +139,14 @@ SENSORS: tuple[NarwalSensorDescription, ...] = (
         translation_key="maintenance_due",
         state_class=SensorStateClass.MEASUREMENT,
         value_fn=lambda d: len(d.consumables.maintain_items) if d.consumables else None,
-        attrs_fn=lambda d: {"items": d.consumables.maintain_items} if d.consumables else None,
+        attrs_fn=lambda d: _consumable_attrs(d, d.consumables.maintain_items) if d.consumables else None,
     ),
     NarwalSensorDescription(
         key="replacement_due",
         translation_key="replacement_due",
         state_class=SensorStateClass.MEASUREMENT,
         value_fn=lambda d: len(d.consumables.replace_items) if d.consumables else None,
-        attrs_fn=lambda d: {"items": d.consumables.replace_items} if d.consumables else None,
+        attrs_fn=lambda d: _consumable_attrs(d, d.consumables.replace_items) if d.consumables else None,
     ),
     NarwalSensorDescription(
         key="detected_obstacles",

@@ -43,7 +43,7 @@ Assistant `config/custom_components/` folder and restart.
 | `sensor.narwal_cleaning_progress`, `_cleaned_area`, `_cleaning_time` | updated during a clean |
 | `sensor.narwal_current_room` | the room the robot is in, from its live position |
 | `sensor.narwal_last_clean`, `_last_clean_area`, `_last_clean_duration` | end time, area and duration of the last finished clean (from the robot's clean report; kept across restarts) |
-| `sensor.narwal_maintenance_due`, `_replacement_due` | number of due items, list in attribute `items` |
+| `sensor.narwal_maintenance_due`, `_replacement_due` | number of parts due for cleaning / replacement; attributes `items` (keys) and `names` (readable) |
 | `sensor.narwal_error` | the current error in plain words (*Robot stuck*, *Side brush blocked*, *Dirty water tank full or missing*, …); attributes `codes` (hex) and `categories` |
 | `sensor.narwal_clean_water_tank`, `_dirty_water_tank`, `_detergent`, `_dust_box`, `_station_dust_bag`, `_dust_bag` | station and robot parts: OK, empty, missing, running low, please empty / replace, fault (only those your robot reports) |
 | `binary_sensor.narwal_clean_water_empty`, `_dirty_water_full`, `_detergent_low` | problem sensors for notifications |
@@ -57,6 +57,9 @@ Assistant `config/custom_components/` folder and restart.
 | `button.narwal_empty_dust_bin`, `_wash_mop`, `_dry_mop` | station actions; the robot must be in the station. Stop one with the vacuum's stop |
 | `number.narwal_volume` | voice volume, 0–100 % |
 | `switch.narwal_auto_empty`, `_quiet_auto_empty`, `_dust_bag_drying`, `_automatic_detergent`, `_hot_water_mop_wash`, `_child_lock` | station automation and child lock (only those your robot supports) |
+| `switch.narwal_deep_clean_heavy_dirt`, `_pet_mode`, `_carpets_first`, `_deep_carpet_cleaning`, `_station_light` | more cleaning settings (only those your robot has) |
+| `select.narwal_carpets` | on carpets: clean with more suction, cross without cleaning, treat as floor, avoid |
+| `select.narwal_mop_drying`, `_mop_washing`, `_corner_cleaning`, `_obstacle_avoidance` | mop drying strength, how often the mop is washed, corner cleaning, obstacle avoidance |
 | `sensor.narwal_detected_obstacles` | number of objects the camera recognised on the floor (cables, shoes, socks, pet waste, …); list in attribute `obstacles` |
 | `sensor.narwal_last_detected` | what was recognised, as text: `3× Cable, 2× Shoes, 1× Plastic bag` (in German: `3× Kabel, 2× Schuhe, 1× Plastiktüte`) |
 
@@ -121,6 +124,25 @@ Settings are read from the robot every 60 s, so changes made in the Narwal app
 show up in Home Assistant too. After a change from Home Assistant the settings
 are read back at once, so the entities show what the robot stored.
 
+## Consumables
+
+The robot itself only knows which parts are due (shown by
+`sensor.narwal_maintenance_due` and `_replacement_due`). After cleaning or
+replacing a part, clear its reminder with the action
+`narwal_local.reset_consumables`:
+
+```yaml
+action: narwal_local.reset_consumables
+data:
+  config_entry_id: <your robot's entry>   # pick the robot in the UI editor
+  items:
+    - station_bag
+```
+
+Without `items`, every due reminder is cleared. Remaining-life percentages
+are not available: the Narwal app gets them from Narwal's cloud, and resetting
+here does not change them in the app.
+
 ## Room cleaning
 
 The robot's rooms are offered to Home Assistant's area cleaning: open the
@@ -164,9 +186,15 @@ in the `codes` attribute.
   the decryption key is handed out by Narwal's cloud after an account login.
   The integration stays fully local and shows each object's type, icon and
   room instead.
-- **Settings**: writing volume, do-not-disturb and child lock was checked on a
-  robot. The station switches use the same `/config/set` call with field
-  numbers from the Narwal app, and every change is read back.
+- **Settings**: writing volume, do-not-disturb, child lock, station light,
+  carpets first and mop drying was checked on a robot. The others use the
+  same `/config/set` call with field numbers from the Narwal app, and every
+  change is read back.
+- **Schedules** cannot be read or changed locally: the Narwal app keeps
+  them in Narwal's cloud. Use Home Assistant automations with
+  `vacuum.clean_area` instead; they run without the cloud.
+- **Consumable lifetimes** (percentages) live in Narwal's cloud too; see
+  *Consumables*.
 - **Station buttons** use the Narwal app's own station commands but have not
   been pressed on a robot yet.
 - **Discovery** uses the mDNS service the Narwal app looks for
@@ -176,8 +204,8 @@ in the `codes` attribute.
 
 ## Roadmap
 
-Ideas, not promises: zone cleaning, scheduled cleans, more settings (carpet
-handling, corner cleaning), consumable reset.
+Ideas, not promises: zone cleaning, starting cleaning plans saved in the
+Narwal app.
 
 ## Development
 
