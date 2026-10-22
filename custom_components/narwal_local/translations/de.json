@@ -56,6 +56,17 @@
         "name": "Reinigungsmittel knapp"
       }
     },
+    "button": {
+      "empty_dust_bin": {
+        "name": "Staubbehälter leeren"
+      },
+      "wash_mop": {
+        "name": "Mopp waschen"
+      },
+      "dry_mop": {
+        "name": "Mopp trocknen"
+      }
+    },
     "event": {
       "clean_finished": {
         "name": "Reinigung beendet",
@@ -311,7 +322,7 @@
         "name": "Staubbeutel trocknen"
       },
       "auto_add_detergent": {
-        "name": "Automatisch Reinigungsmittel"
+        "name": "Reinigungsmittel automatisch zugeben"
       },
       "hot_water_wash": {
         "name": "Mopp-Wäsche mit heißem Wasser"

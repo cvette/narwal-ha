@@ -1,5 +1,9 @@
 # Narwal Local for Home Assistant
 
+[![Tests](https://github.com/cvette/narwal-ha/actions/workflows/tests.yml/badge.svg)](https://github.com/cvette/narwal-ha/actions/workflows/tests.yml)
+[![Validate](https://github.com/cvette/narwal-ha/actions/workflows/validate.yml/badge.svg)](https://github.com/cvette/narwal-ha/actions/workflows/validate.yml)
+[![HACS Custom](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://hacs.xyz)
+
 Local control of Narwal robot vacuums from Home Assistant, over the robot's own
 WebSocket on your network (`ws://<robot-ip>:9002`). No Narwal account, no
 cloud, no internet connection needed.
@@ -12,7 +16,8 @@ cloud, no internet connection needed.
 a recorded full clean. Reading state, the live position and the clean report
 work, and so do all commands: start (whole home or chosen rooms), pause/resume,
 stop, return to dock, locate, fan speed and mop humidity, plus the robot's
-settings (volume, do-not-disturb, station automation).
+settings (volume, do-not-disturb, station automation) and the station's
+actions (empty the dust bin, wash or dry the mop).
 
 ## Installation (HACS)
 
@@ -49,6 +54,7 @@ Assistant `config/custom_components/` folder and restart.
 | `image.narwal_map` | the map: rooms with names, walls, doors, carpets, no-carpet areas, no-go zones, areas the robot cannot enter (darker), and icons for furniture, objects the camera recognised, dirty spots and the dock; during a clean also the robot and its path |
 | `event.narwal_clean_finished` | fired when the robot reports the end of a clean: event type `completed`, `stopped` (ended by someone) or `interrupted` (error, low battery, …); attributes `result`, `clean_type`, `area` (m²), `duration` (s), `progress` (%), `start`, `end` |
 | `switch.narwal_do_not_disturb`, `time.narwal_do_not_disturb_start`, `_end` | do-not-disturb and its window, in the robot's local time |
+| `button.narwal_empty_dust_bin`, `_wash_mop`, `_dry_mop` | station actions; the robot must be in the station. Stop one with the vacuum's stop |
 | `number.narwal_volume` | voice volume, 0–100 % |
 | `switch.narwal_auto_empty`, `_quiet_auto_empty`, `_dust_bag_drying`, `_automatic_detergent`, `_hot_water_mop_wash`, `_child_lock` | station automation and child lock (only those your robot supports) |
 | `sensor.narwal_detected_obstacles` | number of objects the camera recognised on the floor (cables, shoes, socks, pet waste, …); list in attribute `obstacles` |
@@ -161,6 +167,8 @@ in the `codes` attribute.
 - **Settings**: writing volume, do-not-disturb and child lock was checked on a
   robot. The station switches use the same `/config/set` call with field
   numbers from the Narwal app, and every change is read back.
+- **Station buttons** use the Narwal app's own station commands but have not
+  been pressed on a robot yet.
 - **Discovery** uses the mDNS service the Narwal app looks for
   (`_narwal_sweeper._tcp`). It could not yet be checked on a real network;
   entering the IP address always works.

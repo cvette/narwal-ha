@@ -56,6 +56,17 @@
         "name": "Detergent low"
       }
     },
+    "button": {
+      "empty_dust_bin": {
+        "name": "Empty dust bin"
+      },
+      "wash_mop": {
+        "name": "Wash mop"
+      },
+      "dry_mop": {
+        "name": "Dry mop"
+      }
+    },
     "event": {
       "clean_finished": {
         "name": "Clean finished",

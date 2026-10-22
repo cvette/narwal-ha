@@ -373,6 +373,19 @@ class NarwalRobot(NarwalClient):
         """Make the robot call out so it can be found."""
         await self._command(URL_LOCATE)
 
+    # station actions (empty requests; the app's station panel). Stop one
+    # with stop(), like any task.
+
+    async def empty_dust_bin(self) -> None:
+        """Empty the robot's dust box into the station bag."""
+        await self._command("/supply/dust_gathering")
+
+    async def wash_mop(self) -> None:
+        await self._command("/supply/wash_mop")
+
+    async def dry_mop(self) -> None:
+        await self._command("/supply/dry_mop")
+
 
 def _repeated_int64(values: tuple[int, ...]) -> bytes:
     w = Writer()

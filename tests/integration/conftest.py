@@ -173,6 +173,15 @@ class FakeRobot:
     async def locate(self):
         await self._command("locate")
 
+    async def empty_dust_bin(self):
+        await self._command("empty_dust_bin")
+
+    async def wash_mop(self):
+        await self._command("wash_mop")
+
+    async def dry_mop(self):
+        await self._command("dry_mop")
+
     # --- test helpers ---------------------------------------------------
 
     def push(self, topic: str, payload: bytes) -> None:

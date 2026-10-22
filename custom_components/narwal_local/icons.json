@@ -1,0 +1,62 @@
+{
+  "entity": {
+    "button": {
+      "empty_dust_bin": {
+        "default": "mdi:delete-empty"
+      },
+      "wash_mop": {
+        "default": "mdi:water-sync"
+      },
+      "dry_mop": {
+        "default": "mdi:weather-windy"
+      }
+    },
+    "event": {
+      "clean_finished": {
+        "default": "mdi:robot-vacuum"
+      }
+    },
+    "number": {
+      "volume": {
+        "default": "mdi:volume-high"
+      }
+    },
+    "switch": {
+      "do_not_disturb": {
+        "default": "mdi:minus-circle-outline",
+        "state": {
+          "off": "mdi:minus-circle-off-outline"
+        }
+      },
+      "child_lock": {
+        "default": "mdi:lock",
+        "state": {
+          "off": "mdi:lock-open-variant"
+        }
+      },
+      "dust_gathering": {
+        "default": "mdi:delete-restore"
+      },
+      "quiet_dust_gathering": {
+        "default": "mdi:volume-low"
+      },
+      "dry_dust_bag": {
+        "default": "mdi:weather-windy"
+      },
+      "auto_add_detergent": {
+        "default": "mdi:bottle-tonic-plus"
+      },
+      "hot_water_wash": {
+        "default": "mdi:water-thermometer"
+      }
+    },
+    "time": {
+      "do_not_disturb_start": {
+        "default": "mdi:bell-sleep"
+      },
+      "do_not_disturb_end": {
+        "default": "mdi:bell-ring"
+      }
+    }
+  }
+}

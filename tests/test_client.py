@@ -164,3 +164,15 @@ async def test_stop_and_locate_requests(robot, robot_server) -> None:
     await robot.stop()
     await robot.locate()
     assert fake.requests[-2:] == [("/task/force_end", b""), ("/common/yell", b"")]
+
+
+async def test_station_action_requests(robot, robot_server) -> None:
+    fake, _ = robot_server
+    await robot.empty_dust_bin()
+    await robot.wash_mop()
+    await robot.dry_mop()
+    assert fake.requests[-3:] == [
+        ("/supply/dust_gathering", b""),
+        ("/supply/wash_mop", b""),
+        ("/supply/dry_mop", b""),
+    ]
