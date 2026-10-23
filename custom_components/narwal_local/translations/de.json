@@ -223,6 +223,26 @@
       },
       "map": {
         "name": "Karte"
+      },
+      "voice_language": {
+        "name": "Sprachausgabe",
+        "state": {
+          "chinese_simplified": "Chinesisch (vereinfacht)",
+          "chinese_traditional": "Chinesisch (traditionell)",
+          "english": "Englisch",
+          "korean": "Koreanisch",
+          "japanese": "Japanisch",
+          "german": "Deutsch",
+          "hebrew": "Hebräisch",
+          "italian": "Italienisch",
+          "french": "Französisch",
+          "spanish": "Spanisch",
+          "russian": "Russisch",
+          "polish": "Polnisch",
+          "turkish": "Türkisch",
+          "thai": "Thailändisch",
+          "vietnamese": "Vietnamesisch"
+        }
       }
     },
     "sensor": {
@@ -444,6 +464,69 @@
       },
       "mop_drying_remaining": {
         "name": "Restzeit Mopptrocknung"
+      },
+      "last_event": {
+        "name": "Letztes Ereignis",
+        "state": {
+          "self_check": "Selbsttest",
+          "departure": "Verlässt die Station",
+          "wash_mop_before_clean": "Moppwäsche vor der Reinigung",
+          "clean": "Reinigung",
+          "unexpected_pause": "Unerwartet pausiert",
+          "finished": "Aufgabe beendet",
+          "zone_not_clean": "Bereich nicht gereinigt",
+          "maintain_floor": "Bodenpflege",
+          "dust_gather": "Staubbehälter wird geleert",
+          "update_map_region": "Karte wird aktualisiert",
+          "start": "Raum begonnen",
+          "finish": "Raum fertig",
+          "navi_to_station": "Fährt zur Station",
+          "wash_mop": "Moppwäsche",
+          "second_clean": "Zweiter Durchgang",
+          "manual_wash_mop_start": "Moppwäsche von Hand gestartet",
+          "manual_wash_mop_cancel": "Moppwäsche von Hand abgebrochen",
+          "manual_adjust_suction": "Saugstärke von Hand geändert",
+          "pause": "Pausiert",
+          "long_time_no_clean": "Lange nicht gereinigt",
+          "heavy_pollution": "Stark verschmutzt",
+          "humidity_exceeds_threshold": "Boden zu feucht",
+          "adjust_pressure": "Mopp-Anpressdruck angepasst",
+          "carpet_clean": "Teppichreinigung",
+          "trap": "Festgefahren",
+          "auto_wash_mop_start": "Moppwäsche gestartet",
+          "parking": "Parkt",
+          "room_change": "Raum gewechselt",
+          "auto_resume": "Selbst fortgesetzt",
+          "exception_solved": "Problem behoben",
+          "compress_dust_bag": "Staubbeutel wird verdichtet",
+          "manual_adjust_mop_humidity": "Mopp-Feuchte von Hand geändert",
+          "start_clean_many_solid_dirty": "Reinigt viel trockenen Schmutz",
+          "start_clean_many_liquid_dirty": "Reinigt viel nassen Schmutz",
+          "start_clean_massive_solid_dirty": "Reinigt starken trockenen Schmutz",
+          "start_clean_massive_liquid_dirty": "Reinigt starken nassen Schmutz",
+          "maintain_floor_start": "Bodenpflege begonnen",
+          "maintain_floor_finish": "Bodenpflege fertig",
+          "clean_visual_dirty_finish": "Sichtbarer Schmutz beseitigt",
+          "heavy_dirty_clean_manual": "Gründliche Reinigung (gewählt)",
+          "heavy_dirty_clean_smart": "Gründliche Reinigung (automatisch)",
+          "change_clean_sequence": "Raumreihenfolge geändert",
+          "resume_task_after_recharge": "Nach dem Laden fortgesetzt",
+          "not_clean": "Ausgelassen",
+          "blocked_room_replenish_clean": "Holt gesperrten Raum nach",
+          "reduce_noise": "Leiser Modus",
+          "found_card": "Karte gefunden",
+          "found_headphones": "Kopfhörer gefunden",
+          "found_glasses": "Brille gefunden",
+          "found_watch": "Uhr gefunden",
+          "found_jewelry": "Schmuck gefunden",
+          "found_banknote": "Geldschein gefunden",
+          "other": "Sonstiges"
+        },
+        "state_attributes": {
+          "events": {
+            "name": "Ereignisse"
+          }
+        }
       }
     },
     "switch": {

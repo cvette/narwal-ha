@@ -6,7 +6,8 @@ from __future__ import annotations
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 
-from homeassistant.components.button import ButtonEntity, ButtonEntityDescription
+from homeassistant.components.button import ButtonDeviceClass, ButtonEntity, ButtonEntityDescription
+from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
@@ -54,6 +55,8 @@ async def async_setup_entry(
                 NarwalContinueButton(coordinator),
             ]
         )
+
+    async_add_entities([NarwalRestartButton(coordinator)])
 
     # Plans come and go in the app: add a button for each new one.
     known: set[int] = set()
@@ -127,3 +130,17 @@ class NarwalContinueButton(NarwalEntity, ButtonEntity):
     async def async_press(self) -> None:
         await self.coordinator.async_command(self.coordinator.robot.continue_task(True))
         await self.coordinator.async_request_refresh()
+
+
+class NarwalRestartButton(NarwalEntity, ButtonEntity):
+    """Restarts the robot's software (for when it hangs); the integration
+    reconnects by itself."""
+
+    _attr_device_class = ButtonDeviceClass.RESTART
+    _attr_entity_category = EntityCategory.CONFIG
+
+    def __init__(self, coordinator: NarwalCoordinator) -> None:
+        super().__init__(coordinator, "restart")
+
+    async def async_press(self) -> None:
+        await self.coordinator.async_command(self.coordinator.robot.reboot())

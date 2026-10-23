@@ -14,7 +14,8 @@ from datetime import time
 from enum import Enum, StrEnum, auto
 
 from .enums import CarpetStrategy, CornerCleaning, MopDrying, MopWashFrequency, ObstacleAvoidance
-from .pb import WIRE_LEN, WIRE_VARINT, Writer, parse
+from .enums import _NamedIntEnum as _LanguageBase
+from .pb import WIRE_LEN, WIRE_VARINT, Writer, parse, parse_packed_varints
 
 URL_GET_CONFIG = "/config/get"
 URL_SET_CONFIG = "/config/set"
@@ -212,3 +213,53 @@ def build_set_config_request(setting: Setting, value: int | bool | DisturbMode |
                 raise ValueError(f"{setting} needs one of its options, not {value!r}")
             w.varint(info.set_field, int(value), force=True)
     return bytes(w)
+
+
+# --- voice language ----------------------------------------------------------
+#
+#   /config/language/get             -> { 1 result, 2 language }
+#   /config/supported_languages/get  -> { 1 result, 2 languages[] (packed) }
+#   /config/language/set  { 1 language } -> { 1 result (1 success, 2 failed,
+#                                             3 unsupported) }
+#   The robot answers 2 even when it switched; read the language back.
+
+URL_GET_LANGUAGE = "/config/language/get"
+URL_SUPPORTED_LANGUAGES = "/config/supported_languages/get"
+URL_SET_LANGUAGE = "/config/language/set"
+
+
+class Language(_LanguageBase):
+    UNSPECIFIED = 0
+    CHINESE_SIMPLIFIED = 1
+    CHINESE_TRADITIONAL = 2
+    ENGLISH = 3
+    KOREAN = 4
+    JAPANESE = 5
+    GERMAN = 6
+    HEBREW = 7
+    ITALIAN = 8
+    FRENCH = 9
+    SPANISH = 10
+    RUSSIAN = 11
+    POLISH = 12
+    TURKISH = 13
+    THAI = 14
+    VIETNAMESE = 15
+
+
+def decode_language(payload: bytes) -> Language | int:
+    for f in parse(payload):
+        if f.num == 2 and f.wtype == WIRE_VARINT:
+            return Language.from_value(f.int)
+    return Language.UNSPECIFIED
+
+
+def decode_supported_languages(payload: bytes) -> list[Language | int]:
+    for f in parse(payload):
+        if f.num == 2 and f.wtype == WIRE_LEN:
+            return [Language.from_value(v) for v in parse_packed_varints(f.value)]
+    return []
+
+
+def build_set_language_request(language: Language | int) -> bytes:
+    return bytes(Writer().varint(1, int(language), force=True))

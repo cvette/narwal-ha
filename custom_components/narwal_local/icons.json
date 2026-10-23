@@ -57,6 +57,9 @@
       },
       "map": {
         "default": "mdi:layers"
+      },
+      "voice_language": {
+        "default": "mdi:account-voice"
       }
     },
     "sensor": {
@@ -74,6 +77,9 @@
       },
       "mop_drying_remaining": {
         "default": "mdi:timer-sand"
+      },
+      "last_event": {
+        "default": "mdi:timeline-text-outline"
       }
     },
     "switch": {

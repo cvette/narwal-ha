@@ -223,6 +223,26 @@
       },
       "map": {
         "name": "Map"
+      },
+      "voice_language": {
+        "name": "Voice language",
+        "state": {
+          "chinese_simplified": "Chinese (simplified)",
+          "chinese_traditional": "Chinese (traditional)",
+          "english": "English",
+          "korean": "Korean",
+          "japanese": "Japanese",
+          "german": "German",
+          "hebrew": "Hebrew",
+          "italian": "Italian",
+          "french": "French",
+          "spanish": "Spanish",
+          "russian": "Russian",
+          "polish": "Polish",
+          "turkish": "Turkish",
+          "thai": "Thai",
+          "vietnamese": "Vietnamese"
+        }
       }
     },
     "sensor": {
@@ -444,6 +464,69 @@
       },
       "mop_drying_remaining": {
         "name": "Mop drying time left"
+      },
+      "last_event": {
+        "name": "Last event",
+        "state": {
+          "self_check": "Self check",
+          "departure": "Leaving the dock",
+          "wash_mop_before_clean": "Washing the mop before cleaning",
+          "clean": "Cleaning",
+          "unexpected_pause": "Paused unexpectedly",
+          "finished": "Task finished",
+          "zone_not_clean": "Area not cleaned",
+          "maintain_floor": "Floor care",
+          "dust_gather": "Emptying the dust bin",
+          "update_map_region": "Updating the map",
+          "start": "Started a room",
+          "finish": "Finished a room",
+          "navi_to_station": "Heading to the station",
+          "wash_mop": "Washing the mop",
+          "second_clean": "Second pass",
+          "manual_wash_mop_start": "Mop wash started by hand",
+          "manual_wash_mop_cancel": "Mop wash cancelled by hand",
+          "manual_adjust_suction": "Suction changed by hand",
+          "pause": "Paused",
+          "long_time_no_clean": "Not cleaned for a long time",
+          "heavy_pollution": "Heavily soiled",
+          "humidity_exceeds_threshold": "Floor too humid",
+          "adjust_pressure": "Adjusting mop pressure",
+          "carpet_clean": "Cleaning carpet",
+          "trap": "Stuck",
+          "auto_wash_mop_start": "Mop wash started",
+          "parking": "Parking",
+          "room_change": "Changed room",
+          "auto_resume": "Resumed by itself",
+          "exception_solved": "Problem solved",
+          "compress_dust_bag": "Compressing the dust bag",
+          "manual_adjust_mop_humidity": "Mop humidity changed by hand",
+          "start_clean_many_solid_dirty": "Cleaning a lot of dry dirt",
+          "start_clean_many_liquid_dirty": "Cleaning a lot of wet dirt",
+          "start_clean_massive_solid_dirty": "Cleaning heavy dry dirt",
+          "start_clean_massive_liquid_dirty": "Cleaning heavy wet dirt",
+          "maintain_floor_start": "Floor care started",
+          "maintain_floor_finish": "Floor care finished",
+          "clean_visual_dirty_finish": "Visible dirt cleaned",
+          "heavy_dirty_clean_manual": "Deep clean (chosen)",
+          "heavy_dirty_clean_smart": "Deep clean (automatic)",
+          "change_clean_sequence": "Room order changed",
+          "resume_task_after_recharge": "Resumed after recharging",
+          "not_clean": "Skipped",
+          "blocked_room_replenish_clean": "Catching up a blocked room",
+          "reduce_noise": "Quieter mode",
+          "found_card": "Found a card",
+          "found_headphones": "Found headphones",
+          "found_glasses": "Found glasses",
+          "found_watch": "Found a watch",
+          "found_jewelry": "Found jewellery",
+          "found_banknote": "Found a banknote",
+          "other": "Other"
+        },
+        "state_attributes": {
+          "events": {
+            "name": "Events"
+          }
+        }
       }
     },
     "switch": {

@@ -25,7 +25,7 @@ from .client import (
     NarwalRobot,
     NarwalTimeoutError,
 )
-from .config import DisturbMode, RobotConfig, Setting, decode_config
+from .config import DisturbMode, Language, RobotConfig, Setting, decode_config
 from .enums import (
     CarpetStrategy,
     ChargingStatus,
@@ -48,6 +48,7 @@ from .map import DisplayMap, MapInfo, Pose, Room, decode_display_map, decode_get
 from .map_edit import NoGoZone
 from .maps import MapSummary
 from .station import AmbientLight, ContinueTask
+from .timeline import TOPIC_TIME_LINE, CleanEvent, PrimaryTask, TimelineEvent, decode_timeline
 from .models import (
     Activity,
     BatteryInfo,
@@ -69,12 +70,14 @@ __all__ = [
     "TOPIC_CLEAN_REPORT",
     "TOPIC_DISPLAY_MAP",
     "TOPIC_ROBOT_BASE_STATUS",
+    "TOPIC_TIME_LINE",
     "TOPIC_WORKING_STATUS",
     "Activity",
     "AmbientLight",
     "BatteryInfo",
     "CarpetStrategy",
     "ChargingStatus",
+    "CleanEvent",
     "CleanMode",
     "CleanPlan",
     "CleanReport",
@@ -91,6 +94,7 @@ __all__ = [
     "FirmwareVersion",
     "ForbiddenType",
     "IdleStatus",
+    "Language",
     "MapInfo",
     "MapRenderer",
     "MapSummary",
@@ -107,6 +111,7 @@ __all__ = [
     "NoGoZone",
     "ObstacleAvoidance",
     "Pose",
+    "PrimaryTask",
     "ReportTaskType",
     "RobotBaseStatus",
     "RobotConfig",
@@ -115,6 +120,7 @@ __all__ = [
     "Setting",
     "TaskResult",
     "TaskType",
+    "TimelineEvent",
     "WorkingStatus",
     "add_labels",
     "add_robot",
@@ -127,6 +133,7 @@ __all__ = [
     "decode_display_map",
     "decode_get_map_response",
     "decode_robot_base_status",
+    "decode_timeline",
     "decode_working_status",
     "error_category",
     "error_hex",

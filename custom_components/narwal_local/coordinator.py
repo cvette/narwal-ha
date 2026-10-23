@@ -21,6 +21,7 @@ from .const import (
     DOMAIN,
     KEEPALIVE_INTERVAL,
     MAP_INTERVAL,
+    TIMELINE_MAX,
     PATH_MAX_POINTS,
     PATH_MIN_STEP,
     POLL_INTERVAL,
@@ -30,6 +31,7 @@ from .const import (
 from .map_objects import ObjectNames
 from .protocol import (
     TOPIC_CLEAN_REPORT,
+    TOPIC_TIME_LINE,
     BatteryInfo,
     TOPIC_DISPLAY_MAP,
     TOPIC_ROBOT_BASE_STATUS,
@@ -42,6 +44,7 @@ from .protocol import (
     DeviceInfo,
     FeatureList,
     FirmwareVersion,
+    Language,
     MapInfo,
     MapSummary,
     Message,
@@ -51,13 +54,16 @@ from .protocol import (
     NarwalTimeoutError,
     NoGoZone,
     Pose,
+    PrimaryTask,
     RobotBaseStatus,
     RobotConfig,
+    TimelineEvent,
     Setting,
     WorkingStatus,
     decode_clean_report,
     decode_display_map,
     decode_robot_base_status,
+    decode_timeline,
     decode_working_status,
 )
 
@@ -82,6 +88,8 @@ class NarwalData:
     battery: BatteryInfo | None = None  # health, cycles, temperature, …
     continue_task: ContinueTask | None = None  # an interrupted clean to resume
     dry_mop_remain: int | None = None  # seconds of mop drying left
+    timeline: tuple[TimelineEvent, ...] = ()  # events of the current / last task
+    language: Language | int | None = None  # the voice language
 
 
 @dataclass(frozen=True, slots=True)
@@ -91,6 +99,7 @@ class NarwalStatic:
     device: DeviceInfo
     features: FeatureList
     firmware: FirmwareVersion | None
+    languages: tuple[Language | int, ...] = ()  # voice languages the robot has
 
 
 @dataclass(slots=True)
@@ -161,6 +170,7 @@ class NarwalCoordinator(DataUpdateCoordinator[NarwalData]):
             map_info = previous.map if previous else None
             plans = previous.plans if previous else None
             maps = previous.maps if previous else None
+            language = previous.language if previous else None
             now = dt_util.utcnow()
             if consumables is None or now >= self._consumables_due:
                 consumables = await self.robot.get_consumables()
@@ -169,10 +179,12 @@ class NarwalCoordinator(DataUpdateCoordinator[NarwalData]):
                 map_info = await self.robot.get_map()
                 plans = await self._async_get_plans(plans)
                 maps = await self._async_get_maps(maps)
+                language = await self._async_get_language(language)
                 self._map_due = now + MAP_INTERVAL
             config = await self._async_get_config(previous.config if previous else None)
             battery = await self._async_get_battery(previous.battery if previous else None)
             continue_task, dry_mop_remain = await self._async_get_station_extras(status, previous)
+            timeline = await self._async_get_timeline(previous.timeline if previous else ())
         except NarwalError as err:
             raise UpdateFailed(
                 translation_domain=DOMAIN,
@@ -193,7 +205,32 @@ class NarwalCoordinator(DataUpdateCoordinator[NarwalData]):
             battery=battery,
             continue_task=continue_task,
             dry_mop_remain=dry_mop_remain,
+            timeline=timeline,
+            language=language,
         )
+
+    async def _async_get_timeline(self, previous: tuple[TimelineEvent, ...]) -> tuple[TimelineEvent, ...]:
+        """The robot forgets its timeline (on a restart, for example); keep
+        what we collected until it reports events again."""
+        try:
+            events = await self.robot.get_timeline()
+        except (NarwalCommandError, NarwalTimeoutError) as err:
+            _LOGGER.debug("Reading the timeline failed: %s", err)
+            return previous
+        return tuple(events[-TIMELINE_MAX:]) if events else previous
+
+    async def _async_get_language(self, previous: Language | int | None) -> Language | int | None:
+        if not self.static.languages:
+            return None
+        try:
+            return await self.robot.get_language()
+        except (NarwalCommandError, NarwalTimeoutError) as err:
+            _LOGGER.debug("Reading the voice language failed: %s", err)
+            return previous
+
+    async def async_set_language(self, language: Language) -> None:
+        await self.async_command(self.robot.set_language(language))
+        self.async_set_updated_data(replace(self.data, language=language))
 
     async def _async_get_station_extras(
         self, status: RobotBaseStatus, previous: NarwalData | None
@@ -304,6 +341,8 @@ class NarwalCoordinator(DataUpdateCoordinator[NarwalData]):
             elif msg.topic == TOPIC_WORKING_STATUS:
                 working = decode_working_status(msg.payload)
                 self.async_set_updated_data(replace(self.data, working=working))
+            elif msg.topic == TOPIC_TIME_LINE:
+                self._add_timeline(decode_timeline(msg.payload))
             elif msg.topic == TOPIC_CLEAN_REPORT:
                 report = decode_clean_report(msg.payload)
                 self.async_set_updated_data(replace(self.data, last_report=report))
@@ -327,6 +366,21 @@ class NarwalCoordinator(DataUpdateCoordinator[NarwalData]):
         live.version += 1
         for listener in list(self._live_listeners):
             listener()
+
+    @callback
+    def _add_timeline(self, events: list[TimelineEvent]) -> None:
+        """Pushes carry only new events; a self check that opens a task
+        starts a fresh timeline."""
+        timeline = list(self.data.timeline)
+        for event in events:
+            if event.primary and event.task is PrimaryTask.SELF_CHECK and not any(
+                e.task is PrimaryTask.SELF_CHECK for e in timeline[-3:]
+            ):
+                timeline = []
+            if event not in timeline:
+                timeline.append(event)
+        timeline.sort(key=lambda e: e.time)
+        self.async_set_updated_data(replace(self.data, timeline=tuple(timeline[-TIMELINE_MAX:])))
 
     @callback
     def _track_clean_start(self, old: RobotBaseStatus | None, new: RobotBaseStatus) -> None:

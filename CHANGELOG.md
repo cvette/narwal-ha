@@ -5,8 +5,17 @@ All notable changes to Narwal Local. Versions follow the `version` in
 built from the tag of the same name. "Verified" means checked on a real
 robot.
 
-## Unreleased
+## 0.12.0 – 2026-10-24
 
+- `sensor.narwal_last_event` from the robot's cleaning timeline (polled
+  and pushed during tasks), with the last events and their rooms.
+- `select.narwal_voice_language` for the robot's voice language, verified
+  (the robot answers "failed" even when it switched, so the language is
+  read back instead).
+- `button.narwal_restart` restarts the robot's software, verified: it is back
+  after about 50 seconds and the integration reconnects.
+- Fix: a failed connect in `async with NarwalRobot(...)` now closes the
+  client's own HTTP session.
 - `select.narwal_map`: switch between the robot's maps (floors), read
   with `/map/get_all_reduced_maps` (verified read-only on a robot with one
   map; switching not yet tried).

@@ -176,3 +176,11 @@ async def test_station_action_requests(robot, robot_server) -> None:
         ("/supply/wash_mop", b""),
         ("/supply/dry_mop", b""),
     ]
+
+
+async def test_failed_connect_closes_its_session() -> None:
+    client = NarwalRobot("127.0.0.1", 1, timeout=2)
+    with pytest.raises(NarwalConnectionError):
+        async with client:
+            pass
+    assert client._session is None or client._session.closed

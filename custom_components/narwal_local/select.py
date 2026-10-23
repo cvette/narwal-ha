@@ -12,7 +12,7 @@ from homeassistant.helpers.restore_state import RestoreEntity
 
 from .coordinator import NarwalConfigEntry, NarwalCoordinator
 from .entity import NarwalEntity
-from .protocol import AmbientLight, CleanMode, CornerCleaning, MapSummary, MopHumidity, Setting
+from .protocol import AmbientLight, CleanMode, CornerCleaning, Language, MapSummary, MopHumidity, Setting
 from .protocol.config import SETTINGS
 
 PARALLEL_UPDATES = 1
@@ -46,6 +46,8 @@ async def async_setup_entry(
         entities.append(NarwalAmbientLightSelect(coordinator))
     if coordinator.data.maps is not None:
         entities.append(NarwalMapSelect(coordinator))
+    if coordinator.static.languages:
+        entities.append(NarwalLanguageSelect(coordinator))
     async_add_entities(entities)
 
 
@@ -224,3 +226,24 @@ class NarwalMapSelect(NarwalEntity, SelectEntity):
 
     async def async_select_option(self, option: str) -> None:
         await self.coordinator.async_switch_map(self._labels()[option])
+
+
+class NarwalLanguageSelect(NarwalEntity, SelectEntity):
+    """The robot's voice language, from the languages it has."""
+
+    _attr_translation_key = "voice_language"
+    _attr_entity_category = EntityCategory.CONFIG
+
+    def __init__(self, coordinator: NarwalCoordinator) -> None:
+        super().__init__(coordinator, "voice_language")
+        self._attr_options = [
+            lang.name.lower() for lang in coordinator.static.languages if isinstance(lang, Language)
+        ]
+
+    @property
+    def current_option(self) -> str | None:
+        name = getattr(self.coordinator.data.language, "name", None)
+        return name.lower() if name and name.lower() in self.options else None
+
+    async def async_select_option(self, option: str) -> None:
+        await self.coordinator.async_set_language(Language[option.upper()])

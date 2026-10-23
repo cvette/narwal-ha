@@ -56,6 +56,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: NarwalConfigEntry) -> bo
             if features.supports("supportGetFirmwareVersion")
             else None
         )
+        languages: tuple = ()
+        if features.supports("supportOperateLanguage"):
+            try:
+                languages = tuple(await robot.get_supported_languages())
+            except NarwalError:
+                languages = ()
         await robot.activate_reporting(REPORT_SECONDS)
     except NarwalError as err:
         await robot.close()
@@ -66,7 +72,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: NarwalConfigEntry) -> bo
         ) from err
 
     coordinator = NarwalCoordinator(
-        hass, entry, robot, NarwalStatic(device, features, firmware), await async_load_names(hass)
+        hass, entry, robot, NarwalStatic(device, features, firmware, languages), await async_load_names(hass)
     )
     try:
         await coordinator.async_config_entry_first_refresh()

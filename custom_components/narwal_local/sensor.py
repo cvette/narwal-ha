@@ -38,9 +38,12 @@ from .map_objects import obstacle_list, obstacle_summary
 from .protocol import (
     ERROR_CATEGORIES,
     Activity,
+    CleanEvent,
     ChargingStatus,
     Pose,
+    PrimaryTask,
     TaskType,
+    TimelineEvent,
     error_category,
     error_hex,
 )
@@ -334,6 +337,7 @@ async def async_setup_entry(
         ]
     entities.append(NarwalCurrentRoomSensor(coordinator))
     entities.append(NarwalPositionSensor(coordinator))
+    entities.append(NarwalLastEventSensor(coordinator))
     async_add_entities(entities)
 
 
@@ -505,3 +509,60 @@ class NarwalPositionSensor(NarwalEntity, SensorEntity):
         self._written = self._compute()
         self._written_at = dt_util.utcnow().timestamp()
         super()._handle_coordinator_update()
+
+
+def _event_key(event: TimelineEvent) -> str:
+    """The most specific name of an event: the sub-event (room started,
+    mop washing, …) or else the task it belongs to."""
+    if isinstance(event.event, CleanEvent) and event.event is not CleanEvent.UNSPECIFIED:
+        return event.event.name.lower()
+    if event.event:
+        return "other"
+    if isinstance(event.task, PrimaryTask) and event.task is not PrimaryTask.UNSPECIFIED:
+        return event.task.name.lower()
+    return "other"
+
+
+EVENT_OPTIONS: list[str] = list(
+    dict.fromkeys(
+        [t.name.lower() for t in PrimaryTask if t.value]
+        + [e.name.lower() for e in CleanEvent if e.value]
+        + ["other"]
+    )
+)
+TIMELINE_ATTR_EVENTS = 20
+
+
+class NarwalLastEventSensor(NarwalEntity, SensorEntity):
+    """What the robot did last (from its timeline), with the last events of
+    the current or last task as an attribute."""
+
+    _attr_translation_key = "last_event"
+    _attr_device_class = SensorDeviceClass.ENUM
+    _attr_options = EVENT_OPTIONS
+    _unrecorded_attributes = frozenset({"events"})
+
+    def __init__(self, coordinator: NarwalCoordinator) -> None:
+        super().__init__(coordinator, "last_event")
+
+    @property
+    def native_value(self) -> str | None:
+        timeline = self.coordinator.data.timeline
+        return _event_key(timeline[-1]) if timeline else None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        data = self.coordinator.data
+        mi = data.map
+        events = []
+        for e in data.timeline[-TIMELINE_ATTR_EVENTS:]:
+            item: dict[str, Any] = {
+                "time": dt_util.utc_from_timestamp(e.time).isoformat(timespec="seconds"),
+                "event": _event_key(e),
+            }
+            if e.zone_id is not None and mi is not None and (room := mi.room_name(e.zone_id)):
+                item["room"] = room
+            if e.result is not None:
+                item["result"] = getattr(e.result, "name", str(e.result)).lower()
+            events.append(item)
+        return {"events": events}

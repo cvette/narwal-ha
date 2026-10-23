@@ -30,3 +30,6 @@ LIVE_MAP_INTERVAL: Final = timedelta(seconds=5)
 POLL_INTERVAL: Final = timedelta(seconds=60)
 CONSUMABLES_INTERVAL: Final = timedelta(minutes=30)
 MAP_INTERVAL: Final = timedelta(minutes=15)
+
+# Timeline events kept for the last-event sensor's attribute.
+TIMELINE_MAX: Final = 50

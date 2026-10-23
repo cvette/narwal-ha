@@ -21,6 +21,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry  # noqa
 
 from custom_components.narwal_local.const import DOMAIN  # noqa: E402
 from custom_components.narwal_local.protocol import (  # noqa: E402
+    Language,
     MapSummary,
     BatteryInfo,
     DisturbMode,
@@ -81,6 +82,9 @@ class FakeRobot:
         self.config_supported = True
         self.plans: list = []
         self.continue_task_info = None
+        self.timeline: list = []
+        self.language = Language.ENGLISH
+        self.languages = [Language.SPANISH, Language.JAPANESE, Language.FRENCH, Language.ENGLISH]
         self.maps = [MapSummary(1, "", True, False, ("Living room", "Kitchen", "Hallway", "Bedroom"))]
         self.dry_remain = 0
         self.battery = BatteryInfo(6063, 80, 98, 27.3, 16.393, -0.126, 100, None)
@@ -210,6 +214,25 @@ class FakeRobot:
     async def get_battery_info(self):
         self._ensure()
         return self.battery
+
+    async def get_timeline(self):
+        self._ensure()
+        return list(self.timeline)
+
+    async def get_language(self):
+        self._ensure()
+        return self.language
+
+    async def get_supported_languages(self):
+        self._ensure()
+        return list(self.languages)
+
+    async def set_language(self, language):
+        await self._command("set_language", language)
+        self.language = language
+
+    async def reboot(self):
+        await self._command("reboot")
 
     async def get_maps(self):
         self._ensure()
@@ -367,3 +390,17 @@ async def init_integration(
     assert await hass.config_entries.async_setup(config_entry.entry_id)
     await hass.async_block_till_done()
     return config_entry
+
+
+def timeline_payload(*nodes: tuple) -> bytes:
+    """A /status/time_line_status push: (unix seconds, task, event, zone)."""
+    status = Writer()
+    for t, task, event, zone in nodes:
+        node = Writer().varint(1, int(t * 1e9)).varint(2, task)
+        if event is not None:
+            sec = Writer().varint(1, event)
+            if zone is not None:
+                sec.message(2, Writer().varint(1, 1).varint(2, zone))
+            node.message(3, sec)
+        status.message(1, node.boolean(7, event is None))
+    return bytes(status)

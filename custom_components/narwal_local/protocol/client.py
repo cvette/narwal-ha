@@ -30,6 +30,13 @@ from .cleaning import (
     decode_clean_plans,
 )
 from .config import (
+    URL_GET_LANGUAGE,
+    URL_SET_LANGUAGE,
+    URL_SUPPORTED_LANGUAGES,
+    Language,
+    build_set_language_request,
+    decode_language,
+    decode_supported_languages,
     URL_GET_CONFIG,
     URL_SET_CONFIG,
     DisturbMode,
@@ -42,6 +49,7 @@ from .enums import FanLevel, FirmwareStatus, MopHumidity, ServiceResult
 from .frame import SOURCE_APP, FrameError, Header, decode_frame, encode_frame, topic_of
 from .map import MapInfo, decode_get_map_response
 from .map_edit import URL_MAP_OPERATION, NoGoZone, build_no_go_request, decode_map_edit_result
+from .timeline import URL_CLEAN_TIME_LINE, TimelineEvent, decode_clean_time_line
 from .maps import URL_ALL_MAPS, URL_SWITCH_MAP, MapSummary, build_switch_map_request, decode_all_maps
 from .station import (
     URL_AMBIENT_LIGHT,
@@ -193,7 +201,11 @@ class NarwalClient:
             self._session = None
 
     async def __aenter__(self) -> NarwalClient:
-        await self.connect()
+        try:
+            await self.connect()
+        except BaseException:
+            await self.close()  # __aexit__ does not run when entering fails
+            raise
         return self
 
     async def __aexit__(self, *exc: object) -> None:
@@ -447,6 +459,29 @@ class NarwalRobot(NarwalClient):
     async def get_battery_info(self) -> BatteryInfo:
         """Battery health: cycles, capacity, temperature, voltage, current."""
         return decode_battery_info((await self.call(URL_BATTERY_INFO)).payload)
+
+    async def get_timeline(self) -> list[TimelineEvent]:
+        """Events of the current or last task, oldest first."""
+        return decode_clean_time_line((await self.call(URL_CLEAN_TIME_LINE)).payload)
+
+    async def get_language(self) -> Language | int:
+        """The language the robot speaks in."""
+        return decode_language((await self.call(URL_GET_LANGUAGE)).payload)
+
+    async def get_supported_languages(self) -> list[Language | int]:
+        return decode_supported_languages((await self.call(URL_SUPPORTED_LANGUAGES)).payload)
+
+    async def set_language(self, language: Language | int) -> None:
+        """Change the voice language. The robot answers result 2 ("failed")
+        even when it switched (seen on a robot), so the language is read back
+        instead and only a language that did not change is an error."""
+        await self.call(URL_SET_LANGUAGE, build_set_language_request(language))
+        if (now := await self.get_language()) != language:
+            raise NarwalCommandError(URL_SET_LANGUAGE, now)
+
+    async def reboot(self) -> None:
+        """Restart the robot's software; the connection drops meanwhile."""
+        await self._command("/common/reboot")
 
     async def get_maps(self) -> list[MapSummary]:
         """Every map the robot keeps (floors), with names and rooms."""
