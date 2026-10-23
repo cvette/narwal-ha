@@ -62,6 +62,11 @@ class RobotBaseStatus:
     battery_cooling: int = 0  # 49
     raw_fields: dict[int, int] = field(default_factory=dict)
 
+    @property
+    def ambient_light(self) -> int:
+        """Field 50: the station's ambient light mode (0 = off)."""
+        return self.raw_fields.get(50, 0)
+
     def has_field(self, num: int) -> bool:
         """Whether the robot reported this RobotBaseStatus field (models
         without a station part or dust bag leave some out)."""

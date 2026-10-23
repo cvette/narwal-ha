@@ -94,6 +94,18 @@
       },
       "start_plan": {
         "name": "Plan {name} starten"
+      },
+      "wash_and_dry_mop": {
+        "name": "Mopp waschen und trocknen"
+      },
+      "dry_dust_bag": {
+        "name": "Staubbeutel trocknen"
+      },
+      "dry_station_bag": {
+        "name": "Staubbeutel der Station trocknen"
+      },
+      "continue_clean": {
+        "name": "Unterbrochene Reinigung fortsetzen"
       }
     },
     "event": {
@@ -198,6 +210,15 @@
           "smart": "Intelligent",
           "careful": "Vorsichtig (mehr Abstand)",
           "off": "Aus"
+        }
+      },
+      "ambient_light": {
+        "name": "Stimmungslicht",
+        "state": {
+          "off": "Aus",
+          "night_light": "Nachtlicht",
+          "warm": "Warm",
+          "purple": "Lila"
         }
       }
     },
@@ -417,6 +438,9 @@
       },
       "battery_current": {
         "name": "Akkustrom"
+      },
+      "mop_drying_remaining": {
+        "name": "Restzeit Mopptrocknung"
       }
     },
     "switch": {

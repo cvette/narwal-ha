@@ -63,7 +63,10 @@ Assistant `config/custom_components/` folder and restart.
 | `event.narwal_clean_finished` | fired when the robot reports the end of a clean: event type `completed`, `stopped` (ended by someone) or `interrupted` (error, low battery, …); attributes `result`, `clean_type`, `area` (m²), `duration` (s), `progress` (%), `start`, `end` |
 | `switch.narwal_do_not_disturb`, `time.narwal_do_not_disturb_start`, `_end` | do-not-disturb and its window, in the robot's local time |
 | `button.narwal_start_plan_…` | one per cleaning plan saved in the Narwal app; starts it (appears within 15 minutes of saving a plan) |
-| `button.narwal_empty_dust_bin`, `_wash_mop`, `_dry_mop` | station actions; the robot must be in the station. Stop one with the vacuum's stop |
+| `button.narwal_empty_dust_bin`, `_wash_mop`, `_dry_mop`, `_wash_and_dry_mop`, `_dry_station_dust_bag` (`_dry_dust_bag` for robots with their own bag) | station actions; the robot must be in the station. Stop one with the vacuum's stop |
+| `button.narwal_resume_interrupted_clean` | continues a clean that was interrupted (to recharge, or stopped); unavailable while there is nothing to resume |
+| `sensor.narwal_mop_drying_time_left` | remaining mop drying time, 0 when the mop is not drying |
+| `select.narwal_ambient_light` | the station's ambient light: off, night light, warm, purple (as far as the station has them) |
 | `number.narwal_volume` | voice volume, 0–100 % |
 | `switch.narwal_auto_empty`, `_quiet_auto_empty`, `_dust_bag_drying`, `_automatic_detergent`, `_hot_water_mop_wash`, `_child_lock` | station automation and child lock (only those your robot supports) |
 | `switch.narwal_deep_clean_heavy_dirt`, `_pet_mode`, `_carpets_first`, `_deep_carpet_cleaning`, `_station_light` | more cleaning settings (only those your robot has) |
@@ -345,7 +348,8 @@ in the `codes` attribute.
   `vacuum.clean_area` instead; they run without the cloud.
 - **Consumable lifetimes** (percentages) live in Narwal's cloud too; see
   *Consumables*.
-- **Station buttons** use the Narwal app's own station commands but have not
+- **Station buttons**: dry mop is verified on a robot (and ending it with
+  stop); the others use the Narwal app's own station commands but have not
   been pressed on a robot yet.
 - **Discovery** uses the mDNS service the Narwal app looks for
   (`_narwal_sweeper._tcp`). It could not yet be checked on a real network;

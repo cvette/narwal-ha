@@ -79,6 +79,8 @@ class FakeRobot:
         self.config = decode_config(config_payload())
         self.config_supported = True
         self.plans: list = []
+        self.continue_task_info = None
+        self.dry_remain = 0
         self.battery = BatteryInfo(6063, 80, 98, 27.3, 16.393, -0.126, 100, None)
 
     def __call__(self, host: str, port: int = 9002, **_: object) -> FakeRobot:
@@ -206,6 +208,31 @@ class FakeRobot:
     async def get_battery_info(self):
         self._ensure()
         return self.battery
+
+    async def get_continue_task(self):
+        self._ensure()
+        return self.continue_task_info
+
+    async def continue_task(self, resume=True):
+        await self._command("continue_task", resume)
+        self.continue_task_info = None
+
+    async def get_dry_mop_remain_time(self):
+        self._ensure()
+        return self.dry_remain
+
+    async def set_ambient_light(self, mode):
+        await self._command("set_ambient_light", mode)
+        self.status.raw_fields[50] = int(mode)
+
+    async def wash_and_dry_mop(self):
+        await self._command("wash_and_dry_mop")
+
+    async def dry_dust_bag(self):
+        await self._command("dry_dust_bag")
+
+    async def dry_station_bag(self):
+        await self._command("dry_station_bag")
 
     async def start_plan(self, plan):
         await self._command("start_plan", plan.id)

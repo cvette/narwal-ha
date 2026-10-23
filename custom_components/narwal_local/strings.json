@@ -94,6 +94,18 @@
       },
       "start_plan": {
         "name": "Start plan {name}"
+      },
+      "wash_and_dry_mop": {
+        "name": "Wash and dry mop"
+      },
+      "dry_dust_bag": {
+        "name": "Dry dust bag"
+      },
+      "dry_station_bag": {
+        "name": "Dry station dust bag"
+      },
+      "continue_clean": {
+        "name": "Resume interrupted clean"
       }
     },
     "event": {
@@ -198,6 +210,15 @@
           "smart": "Smart",
           "careful": "Careful (more distance)",
           "off": "Off"
+        }
+      },
+      "ambient_light": {
+        "name": "Ambient light",
+        "state": {
+          "off": "Off",
+          "night_light": "Night light",
+          "warm": "Warm",
+          "purple": "Purple"
         }
       }
     },
@@ -417,6 +438,9 @@
       },
       "battery_current": {
         "name": "Battery current"
+      },
+      "mop_drying_remaining": {
+        "name": "Mop drying time left"
       }
     },
     "switch": {

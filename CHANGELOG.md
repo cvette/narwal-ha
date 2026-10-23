@@ -7,6 +7,13 @@ robot.
 
 ## Unreleased
 
+- More station buttons: wash and dry mop, dry the station's dust bag (and
+  the robot's own bag where it has one).
+- `button.narwal_resume_interrupted_clean`: continue an interrupted clean.
+- `sensor.narwal_mop_drying_time_left` (seconds, verified: a drying run
+  starts at 5 hours).
+- `select.narwal_ambient_light` for the station's ambient light, verified.
+- Verified on a robot: the dry mop button and ending the drying with stop.
 - Battery health sensors (diagnostic): health, charge cycles, full-charge
   capacity, temperature; voltage and current are disabled by default.
 

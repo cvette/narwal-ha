@@ -239,6 +239,17 @@ def _battery_has(attr: str) -> Callable[[NarwalData], bool]:
     return lambda d: d.battery is not None and getattr(d.battery, attr) is not None
 
 
+MOP_DRYING_SENSOR = NarwalSensorDescription(
+    key="mop_drying_remaining",
+    translation_key="mop_drying_remaining",
+    device_class=SensorDeviceClass.DURATION,
+    native_unit_of_measurement=UnitOfTime.SECONDS,
+    suggested_unit_of_measurement=UnitOfTime.MINUTES,
+    suggested_display_precision=0,
+    value_fn=lambda d: d.dry_mop_remain,
+    exists_fn=lambda d: d.status.has_station,
+)
+
 BATTERY_SENSORS: tuple[NarwalSensorDescription, ...] = (
     NarwalSensorDescription(
         key="battery_health",
@@ -313,6 +324,8 @@ async def async_setup_entry(
         NarwalSensor(coordinator, d) for d in SENSORS if d.exists_fn(coordinator.data)
     ]
     entities += [NarwalRestoreSensor(coordinator, d) for d in LAST_CLEAN_SENSORS]
+    if MOP_DRYING_SENSOR.exists_fn(coordinator.data):
+        entities.append(NarwalSensor(coordinator, MOP_DRYING_SENSOR))
     if coordinator.data.battery is not None:
         entities += [
             NarwalSensor(coordinator, d)

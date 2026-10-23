@@ -42,6 +42,20 @@ from .enums import FanLevel, FirmwareStatus, MopHumidity, ServiceResult
 from .frame import SOURCE_APP, FrameError, Header, decode_frame, encode_frame, topic_of
 from .map import MapInfo, decode_get_map_response
 from .map_edit import URL_MAP_OPERATION, NoGoZone, build_no_go_request, decode_map_edit_result
+from .station import (
+    URL_AMBIENT_LIGHT,
+    URL_CONTINUE_TASK,
+    URL_DRY_MOP_REMAIN,
+    URL_GET_CONTINUE_TASK,
+    AmbientLight,
+    ContinueResult,
+    ContinueTask,
+    build_ambient_light_request,
+    build_continue_request,
+    decode_continue_result,
+    decode_continue_task,
+    decode_dry_mop_remain,
+)
 from .models import (
     BatteryInfo,
     ConsumableInfo,
@@ -433,6 +447,25 @@ class NarwalRobot(NarwalClient):
         """Battery health: cycles, capacity, temperature, voltage, current."""
         return decode_battery_info((await self.call(URL_BATTERY_INFO)).payload)
 
+    async def get_continue_task(self) -> ContinueTask | None:
+        """The interrupted clean the robot can resume, if any."""
+        return decode_continue_task((await self.call(URL_GET_CONTINUE_TASK)).payload)
+
+    async def continue_task(self, resume: bool = True) -> None:
+        """Resume the interrupted clean (or, with resume=False, close it)."""
+        result = decode_continue_result((await self.call(URL_CONTINUE_TASK, build_continue_request(resume))).payload)
+        expected = ContinueResult.CONTINUED if resume else ContinueResult.REPORT_UPLOADED
+        if result not in (expected, ContinueResult.UNSPECIFIED):
+            raise NarwalCommandError(URL_CONTINUE_TASK, result)
+
+    async def get_dry_mop_remain_time(self) -> int:
+        """Remaining mop drying time (0 when not drying)."""
+        return decode_dry_mop_remain((await self.call(URL_DRY_MOP_REMAIN)).payload)
+
+    async def set_ambient_light(self, mode: AmbientLight | int) -> None:
+        """Switch the station's ambient light (the answer has no result code)."""
+        await self.call(URL_AMBIENT_LIGHT, build_ambient_light_request(mode))
+
     async def get_clean_plans(self) -> list[CleanPlan]:
         """The cleaning plans saved in the Narwal app (all maps)."""
         return decode_clean_plans((await self.call(URL_GET_PLANS)).payload)
@@ -460,6 +493,17 @@ class NarwalRobot(NarwalClient):
 
     async def dry_mop(self) -> None:
         await self._command("/supply/dry_mop")
+
+    async def wash_and_dry_mop(self) -> None:
+        await self._command("/supply/wash_and_dry_mop")
+
+    async def dry_dust_bag(self) -> None:
+        """Dry the robot's own dust bag."""
+        await self._command("/supply/dry_dust_bag")
+
+    async def dry_station_bag(self) -> None:
+        """Dry (and disinfect) the station's dust bag."""
+        await self._command("/supply/dry_station_bag")
 
 
 def _repeated_int64(values: tuple[int, ...]) -> bytes:

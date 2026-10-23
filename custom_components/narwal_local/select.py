@@ -12,7 +12,7 @@ from homeassistant.helpers.restore_state import RestoreEntity
 
 from .coordinator import NarwalConfigEntry, NarwalCoordinator
 from .entity import NarwalEntity
-from .protocol import CleanMode, CornerCleaning, MopHumidity, Setting
+from .protocol import AmbientLight, CleanMode, CornerCleaning, MopHumidity, Setting
 from .protocol.config import SETTINGS
 
 PARALLEL_UPDATES = 1
@@ -42,6 +42,8 @@ async def async_setup_entry(
             for d in SETTING_SELECTS
             if (d.feature is None or features.supports(d.feature)) and config.has(d.setting)
         )
+    if coordinator.static.features.other.get("maxAmbientLightCtrlType", 0) > 0:
+        entities.append(NarwalAmbientLightSelect(coordinator))
     async_add_entities(entities)
 
 
@@ -160,3 +162,27 @@ class NarwalSettingSelect(NarwalEntity, SelectEntity):
         await self.coordinator.async_set_config(
             self.entity_description.setting, self._enum[option.upper()]
         )
+
+
+class NarwalAmbientLightSelect(NarwalEntity, SelectEntity):
+    """The station's ambient light: off or one of the modes it supports
+    (the feature list's maxAmbientLightCtrlType)."""
+
+    _attr_translation_key = "ambient_light"
+
+    def __init__(self, coordinator: NarwalCoordinator) -> None:
+        super().__init__(coordinator, "ambient_light")
+        top = coordinator.static.features.other.get("maxAmbientLightCtrlType", 0)
+        self._attr_options = [m.name.lower() for m in AmbientLight if m.value <= top]
+
+    @property
+    def current_option(self) -> str | None:
+        mode = AmbientLight.from_value(self.coordinator.data.status.ambient_light)
+        name = getattr(mode, "name", None)
+        return name.lower() if name and name.lower() in self.options else None
+
+    async def async_select_option(self, option: str) -> None:
+        await self.coordinator.async_command(
+            self.coordinator.robot.set_ambient_light(AmbientLight[option.upper()])
+        )
+        await self.coordinator.async_request_refresh()

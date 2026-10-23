@@ -37,6 +37,7 @@ from .protocol import (
     CleanMode,
     CleanPlan,
     CleanReport,
+    ContinueTask,
     ConsumableInfo,
     DeviceInfo,
     FeatureList,
@@ -77,6 +78,8 @@ class NarwalData:
     config: RobotConfig | None = None
     plans: tuple[CleanPlan, ...] | None = None  # saved in the Narwal app
     battery: BatteryInfo | None = None  # health, cycles, temperature, …
+    continue_task: ContinueTask | None = None  # an interrupted clean to resume
+    dry_mop_remain: int | None = None  # seconds of mop drying left
 
 
 @dataclass(frozen=True, slots=True)
@@ -165,6 +168,7 @@ class NarwalCoordinator(DataUpdateCoordinator[NarwalData]):
                 self._map_due = now + MAP_INTERVAL
             config = await self._async_get_config(previous.config if previous else None)
             battery = await self._async_get_battery(previous.battery if previous else None)
+            continue_task, dry_mop_remain = await self._async_get_station_extras(status, previous)
         except NarwalError as err:
             raise UpdateFailed(
                 translation_domain=DOMAIN,
@@ -182,7 +186,25 @@ class NarwalCoordinator(DataUpdateCoordinator[NarwalData]):
             config=config,
             plans=plans,
             battery=battery,
+            continue_task=continue_task,
+            dry_mop_remain=dry_mop_remain,
         )
+
+    async def _async_get_station_extras(
+        self, status: RobotBaseStatus, previous: NarwalData | None
+    ) -> tuple[ContinueTask | None, int | None]:
+        """An interrupted clean to resume and the mop drying time left; robots
+        without a station or these services keep what they had."""
+        continue_task = previous.continue_task if previous else None
+        dry = previous.dry_mop_remain if previous else None
+        if not status.has_station:
+            return continue_task, dry
+        try:
+            continue_task = await self.robot.get_continue_task()
+            dry = await self.robot.get_dry_mop_remain_time()
+        except (NarwalCommandError, NarwalTimeoutError) as err:
+            _LOGGER.debug("Reading the station extras failed: %s", err)
+        return continue_task, dry
 
     async def _async_get_battery(self, previous: BatteryInfo | None) -> BatteryInfo | None:
         """Battery health, for robots that report it."""

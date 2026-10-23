@@ -12,6 +12,18 @@
       },
       "start_plan": {
         "default": "mdi:play-box-outline"
+      },
+      "wash_and_dry_mop": {
+        "default": "mdi:washing-machine"
+      },
+      "dry_dust_bag": {
+        "default": "mdi:weather-windy"
+      },
+      "dry_station_bag": {
+        "default": "mdi:fan"
+      },
+      "continue_clean": {
+        "default": "mdi:play-circle-outline"
       }
     },
     "event": {
@@ -39,6 +51,9 @@
       },
       "obstacle_avoidance": {
         "default": "mdi:sign-direction"
+      },
+      "ambient_light": {
+        "default": "mdi:lightbulb-night"
       }
     },
     "sensor": {
@@ -53,6 +68,9 @@
       },
       "battery_capacity": {
         "default": "mdi:battery-high"
+      },
+      "mop_drying_remaining": {
+        "default": "mdi:timer-sand"
       }
     },
     "switch": {
