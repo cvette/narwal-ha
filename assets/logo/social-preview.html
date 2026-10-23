@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Social preview</title>
+<!-- Source of assets/logo/social-preview.png (GitHub social preview, 1280 x 640).
+     Render at exactly 1280 x 640, e.g. headless Edge or Chrome with --window-size=1280,640. -->
+<style>
+  html, body { margin: 0; width: 1280px; height: 640px; overflow: hidden; }
+  body {
+    background: radial-gradient(circle at 78% 30%, #134e4a 0%, #0b2e2b 45%, #071c1a 100%);
+    color: #ecfdf5;
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    display: flex; align-items: center; gap: 72px; padding: 0 110px; box-sizing: border-box;
+  }
+  .icon { flex: none; width: 300px; height: 300px; filter: drop-shadow(0 18px 40px rgba(0,0,0,.45)); }
+  h1 { margin: 0; font-size: 84px; font-weight: 700; letter-spacing: -1.5px; line-height: 1; }
+  h2 { margin: 14px 0 34px; font-size: 38px; font-weight: 400; color: #5eead4; }
+  p { margin: 0; font-size: 30px; line-height: 1.45; color: #ccfbf1; max-width: 640px; }
+  .tags { display: flex; gap: 14px; margin-top: 34px; }
+  .tag { font-size: 22px; padding: 8px 18px; border-radius: 999px; border: 2px solid #2dd4bf; color: #99f6e4; }
+  .note { position: absolute; right: 40px; bottom: 26px; font-size: 18px; color: #5f8f88; }
+</style>
+</head>
+<body>
+  <svg class="icon" viewBox="24 24 208 208" aria-hidden="true">
+    <defs>
+      <linearGradient id="body" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#14b8a6"/><stop offset="1" stop-color="#0f766e"/>
+      </linearGradient>
+    </defs>
+    <circle cx="128" cy="128" r="104" fill="url(#body)"/>
+    <path d="M60 94 A78 78 0 0 1 196 94" fill="none" stroke="#ffffff" stroke-opacity="0.92" stroke-width="13" stroke-linecap="round"/>
+    <circle cx="128" cy="114" r="27" fill="#ffffff"/>
+    <circle cx="128" cy="114" r="11.5" fill="#0f766e"/>
+    <path d="M86 180 H170" stroke="#ffffff" stroke-width="11" stroke-linecap="round"/>
+    <circle cx="86" cy="180" r="15" fill="#ffffff"/>
+    <circle cx="170" cy="180" r="15" fill="#ffffff"/>
+    <circle cx="128" cy="180" r="10" fill="#5eead4"/>
+  </svg>
+  <div>
+    <h1>Narwal Local</h1>
+    <h2>for Home Assistant</h2>
+    <p>Control your Narwal robot vacuum over your own network. No cloud, no account.</p>
+    <div class="tags"><span class="tag">Live map</span><span class="tag">Room cleaning</span><span class="tag">HACS</span></div>
+  </div>
+  <div class="note">Unofficial · not affiliated with Narwal</div>
+</body>
+</html>

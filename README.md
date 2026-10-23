@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="https://raw.githubusercontent.com/cvette/narwal-ha/main/custom_components/narwal_local/brand/icon.png" alt="Narwal Local icon" width="128">
+</p>
+
 # Narwal Local for Home Assistant
 
 [![Tests](https://github.com/cvette/narwal-ha/actions/workflows/tests.yml/badge.svg)](https://github.com/cvette/narwal-ha/actions/workflows/tests.yml)
@@ -18,6 +22,8 @@ work, and so do all commands: start (whole home or chosen rooms), pause/resume,
 stop, return to dock, locate, fan speed and mop humidity, plus the robot's
 settings (volume, do-not-disturb, station automation) and the station's
 actions (empty the dust bin, wash or dry the mop).
+
+What changed in each version: [CHANGELOG.md](CHANGELOG.md).
 
 ## Installation (HACS)
 

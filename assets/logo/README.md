@@ -13,3 +13,8 @@ them, render `icon.svg` at both sizes with a transparent background, for
 example in a headless browser, and save them as optimized PNGs.
 
 Colours: `#14b8a6` → `#0f766e` (body gradient), `#5eead4` (link), white.
+
+`social-preview.png` (1280 × 640) is the card GitHub shows when the
+repository is shared; it is uploaded under the repository's Settings →
+General → Social preview. Its source is `social-preview.html`: render it at
+exactly 1280 × 640, for example with a headless browser.
