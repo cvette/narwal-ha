@@ -4,9 +4,6 @@
   "after_dependencies": [
     "frontend"
   ],
-  "categories": [
-    "appliances_cleaning.cleaning"
-  ],
   "codeowners": [
     "@cvette"
   ],
