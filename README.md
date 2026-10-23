@@ -268,7 +268,8 @@ same-length dummies. The map fixture is synthetic
 
 ## License
 
-MIT, see [LICENSE](LICENSE).
+MIT, see [LICENSE](LICENSE). The icon (`assets/logo/icon.svg`) is original
+artwork for this project under the same licence; it is not a Narwal logo.
 
 The map icons are a subset of [Material Design Icons](https://pictogrammers.com/library/mdi/)
 (@mdi/font 7.4.47, Apache License 2.0), the icon set Home Assistant uses. See
