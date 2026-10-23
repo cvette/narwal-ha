@@ -86,9 +86,25 @@ function hass() {
       if (service === "start" || service.startsWith("clean")) states["vacuum.narwal"] = { ...states["vacuum.narwal"], state: "cleaning" };
       if (service === "pause") states["vacuum.narwal"] = { ...states["vacuum.narwal"], state: "paused" };
       if (service === "return_to_base" || service === "stop") states["vacuum.narwal"] = { ...states["vacuum.narwal"], state: "docked" };
+      if (service === "add_no_go_zones" || service === "delete_no_go_zones") editNoGo(service, data);
       card.hass = hass();
     },
   };
+}
+// Applies no-go edits to the demo map the way the robot would (new ids after
+// the highest one); the card then fetches the "changed" map again.
+function editNoGo(service, data) {
+  const t = payload.transform;
+  const px = (x, y) => [((x / 1000 - t.origin_x) / t.resolution - t.col0) * t.scale, (t.row1 - (y / 1000 - t.origin_y) / t.resolution) * t.scale];
+  const kinds = { no_entry: 3, no_vacuum: 1, no_mop: 2 };
+  if (service === "add_no_go_zones") {
+    let id = Math.max(0, ...payload.no_go_zones.map((z) => z.id));
+    for (const [x1, y1, x2, y2] of data.zones)
+      payload.no_go_zones.push({ id: ++id, type: kinds[data.type], points: [px(x1, y1), px(x2, y1), px(x2, y2), px(x1, y2)] });
+  } else {
+    payload.no_go_zones = payload.no_go_zones.filter((z) => !data.ids.includes(z.id));
+  }
+  payload.version = String(Date.now());
 }
 function tick() {
   const cleaning = states["vacuum.narwal"].state === "cleaning";

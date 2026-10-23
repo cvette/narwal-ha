@@ -31,7 +31,11 @@ from custom_components.narwal_local.protocol import (  # noqa: E402
 )
 from custom_components.narwal_local.protocol.config import SETTINGS, Kind  # noqa: E402
 from custom_components.narwal_local.protocol.frame import Header  # noqa: E402
-from custom_components.narwal_local.protocol.map import decode_get_map_response  # noqa: E402
+from custom_components.narwal_local.protocol.map import (  # noqa: E402
+    ForbiddenArea,
+    Point,
+    decode_get_map_response,
+)
 from custom_components.narwal_local.protocol.models import (  # noqa: E402
     decode_consumable_info,
     decode_device_base_status,
@@ -185,6 +189,17 @@ class FakeRobot:
 
     async def clean_zones(self, zones, *, mode=None, count=1, map_info=None, **_):
         await self._command("clean_zones", [tuple(round(v, 3) for v in z) for z in zones], mode, count)
+
+    async def edit_no_go_zones(self, add=(), delete=()):
+        """Like the robot: new zones get ids after the highest one."""
+        await self._command("edit_no_go_zones", list(add), list(delete))
+        zones = [fa for fa in self.map.forbiddens if fa.id not in delete]
+        next_id = max((fa.id for fa in self.map.forbiddens), default=0) + 1
+        for offset, zone in enumerate(add):
+            polygon = [Point(*self.map.world_to_border_point(x, y)) for x, y in zone.polygon()]
+            zones.append(ForbiddenArea(id=next_id + offset, type=zone.type, polygon=polygon))
+        self.map = replace(self.map, forbiddens=zones, edit_version=self.map.edit_version + 1)
+        return self.map
 
     async def start_plan(self, plan):
         await self._command("start_plan", plan.id)

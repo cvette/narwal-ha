@@ -17,7 +17,8 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from .const import DOMAIN
 from .coordinator import NarwalConfigEntry, NarwalCoordinator
 from .entity import NarwalEntity
-from .protocol import Activity, FanLevel
+from .map_objects import NO_GO_TYPES
+from .protocol import Activity, FanLevel, NoGoZone
 from .protocol.map import Point
 
 PARALLEL_UPDATES = 1
@@ -152,6 +153,36 @@ class NarwalVacuum(NarwalEntity, StateVacuumEntity):
             )
         )
         await self.coordinator.async_request_refresh()
+
+    async def async_add_no_go_zones(self, zones: list[list[float]], type: str = "no_entry") -> None:
+        """Add no-go zones, [x1, y1, x2, y2] in millimetres each."""
+        kind = next(k for k, name in NO_GO_TYPES.items() if name == type)
+        add = []
+        for zone in zones:
+            x1, y1, x2, y2 = (v / 1000 for v in zone)
+            if x1 == x2 or y1 == y2:
+                raise ServiceValidationError(
+                    translation_domain=DOMAIN,
+                    translation_key="zone_too_small",
+                    translation_placeholders={"zone": str([round(v) for v in zone])},
+                )
+            add.append(NoGoZone(x1, y1, x2, y2, kind))
+        await self.coordinator.async_edit_no_go_zones(add=add)
+
+    async def async_delete_no_go_zones(self, ids: list[int] | None = None) -> None:
+        """Delete the no-go zones with these ids (see the map image's
+        no_go_zones), or all of them."""
+        mi = self.coordinator.data.map
+        existing = [fa.id for fa in mi.forbiddens] if mi else []
+        ids = existing if ids is None else ids
+        if missing := [i for i in ids if i not in existing]:
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="unknown_no_go_zones",
+                translation_placeholders={"ids": ", ".join(map(str, missing))},
+            )
+        if ids:
+            await self.coordinator.async_edit_no_go_zones(delete=ids)
 
     async def async_start(self) -> None:
         """Resume a paused clean, otherwise clean every room."""

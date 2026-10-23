@@ -17,6 +17,8 @@ from .protocol.enums import MAINTAIN_ITEM_NAMES, REPLACE_ITEM_NAMES
 SERVICE_RESET_CONSUMABLES = "reset_consumables"
 SERVICE_CLEAN_ZONE = "clean_zone"
 SERVICE_CLEAN_ROOMS = "clean_rooms"
+SERVICE_ADD_NO_GO = "add_no_go_zones"
+SERVICE_DELETE_NO_GO = "delete_no_go_zones"
 ATTR_CONFIG_ENTRY_ID = "config_entry_id"
 ATTR_ITEMS = "items"
 
@@ -35,6 +37,14 @@ CLEAN_ZONE_SCHEMA = {
 CLEAN_ROOMS_SCHEMA = {
     vol.Required("rooms"): vol.All(cv.ensure_list, [vol.Coerce(int)], vol.Length(min=1)),
     vol.Optional("repeats", default=1): vol.All(vol.Coerce(int), vol.Range(min=1, max=3)),
+}
+
+ADD_NO_GO_SCHEMA = {
+    vol.Required("zones"): vol.All(cv.ensure_list, [ZONE], vol.Length(min=1, max=MAX_ZONES)),
+    vol.Optional("type", default="no_entry"): vol.In(["no_entry", "no_vacuum", "no_mop"]),
+}
+DELETE_NO_GO_SCHEMA = {
+    vol.Optional("ids"): vol.All(cv.ensure_list, [vol.Coerce(int)]),
 }
 
 RESET_SCHEMA = vol.Schema(
@@ -98,4 +108,20 @@ def async_setup_services(hass: HomeAssistant) -> None:
         entity_domain=VACUUM_DOMAIN,
         schema=CLEAN_ROOMS_SCHEMA,
         func="async_clean_rooms",
+    )
+    service.async_register_platform_entity_service(
+        hass,
+        DOMAIN,
+        SERVICE_ADD_NO_GO,
+        entity_domain=VACUUM_DOMAIN,
+        schema=ADD_NO_GO_SCHEMA,
+        func="async_add_no_go_zones",
+    )
+    service.async_register_platform_entity_service(
+        hass,
+        DOMAIN,
+        SERVICE_DELETE_NO_GO,
+        entity_domain=VACUUM_DOMAIN,
+        schema=DELETE_NO_GO_SCHEMA,
+        func="async_delete_no_go_zones",
     )

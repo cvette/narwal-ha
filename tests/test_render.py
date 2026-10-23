@@ -9,7 +9,7 @@ import zlib
 import pytest
 
 from protocol.enums import ForbiddenType
-from protocol.map import ForbiddenArea, MapInfo, decode_get_map_response
+from protocol.map import ForbiddenArea, MapInfo, Point, decode_get_map_response
 from protocol.enums import ObstacleLabel
 from protocol.map import FLAG_BLOCKED
 from protocol.render import (
@@ -248,7 +248,7 @@ def test_forbidden_zone_is_drawn() -> None:
         ForbiddenArea(
             id=1,
             type=ForbiddenType.SWEEP_MOP,
-            polygon=[mi.cell_to_world(*c) for c in [(5, 5), (15, 5), (15, 15), (5, 15)]],
+            polygon=[Point(*c) for c in [(5, 5), (15, 5), (15, 15), (5, 15)]],  # border frame, border 0
         )
     )
     theme = Theme()

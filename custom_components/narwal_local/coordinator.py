@@ -46,6 +46,7 @@ from .protocol import (
     NarwalError,
     NarwalRobot,
     NarwalTimeoutError,
+    NoGoZone,
     Pose,
     RobotBaseStatus,
     RobotConfig,
@@ -197,6 +198,20 @@ class NarwalCoordinator(DataUpdateCoordinator[NarwalData]):
         except (NarwalCommandError, NarwalTimeoutError) as err:
             _LOGGER.debug("Reading the settings failed: %s", err)
             return previous
+
+    async def async_edit_no_go_zones(
+        self, add: list[NoGoZone] | None = None, delete: list[int] | None = None
+    ) -> None:
+        """Change no-go zones and take the robot's map as it is afterwards."""
+        map_info: MapInfo | None = None
+
+        async def edit() -> None:
+            nonlocal map_info
+            map_info = await self.robot.edit_no_go_zones(add or (), delete or ())
+
+        await self.async_command(edit())
+        self._map_due = dt_util.utcnow() + MAP_INTERVAL
+        self.async_set_updated_data(replace(self.data, map=map_info))
 
     async def async_refresh_consumables(self) -> None:
         """Re-read the due parts now, e.g. after a reset."""

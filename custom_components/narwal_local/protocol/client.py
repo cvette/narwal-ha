@@ -41,6 +41,7 @@ from .config import (
 from .enums import FanLevel, FirmwareStatus, MopHumidity, ServiceResult
 from .frame import SOURCE_APP, FrameError, Header, decode_frame, encode_frame, topic_of
 from .map import MapInfo, decode_get_map_response
+from .map_edit import URL_MAP_OPERATION, NoGoZone, build_no_go_request, decode_map_edit_result
 from .models import (
     ConsumableInfo,
     DeviceInfo,
@@ -411,6 +412,18 @@ class NarwalRobot(NarwalClient):
             count=count,
         )
         await self._command(URL_START_LEGACY, request)
+
+    async def edit_no_go_zones(
+        self, add: Sequence[NoGoZone] = (), delete: Sequence[int] = ()
+    ) -> MapInfo:
+        """Add and/or delete no-go zones in one map edit; returns the map as
+        the robot has it afterwards."""
+        mi = await self.get_map()
+        msg = await self.call(URL_MAP_OPERATION, build_no_go_request(mi, add, delete))
+        result, error = decode_map_edit_result(msg.payload)
+        if error or result != ServiceResult.PERFORM_SUCCESS:
+            raise NarwalCommandError(URL_MAP_OPERATION, error or result)
+        return await self.get_map()
 
     async def get_clean_plans(self) -> list[CleanPlan]:
         """The cleaning plans saved in the Narwal app (all maps)."""

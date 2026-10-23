@@ -45,6 +45,7 @@ from .enums import (
 )
 from .errors import ERROR_CATEGORIES, error_category, error_hex
 from .map import DisplayMap, MapInfo, Pose, Room, decode_display_map, decode_get_map_response
+from .map_edit import NoGoZone
 from .models import (
     Activity,
     CleanReport,
@@ -96,6 +97,7 @@ __all__ = [
     "NarwalError",
     "NarwalRobot",
     "NarwalTimeoutError",
+    "NoGoZone",
     "ObstacleAvoidance",
     "Pose",
     "ReportTaskType",

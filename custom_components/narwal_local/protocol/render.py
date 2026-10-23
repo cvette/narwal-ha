@@ -269,11 +269,11 @@ def render_png(
     }
     for fa in mi.forbiddens:
         c = fill.get(fa.type, theme.no_go)
-        corners = [vp.corner(*_cp(mi.world_to_cell(p))) for p in fa.polygon]
+        corners = [vp.corner(*_cp(mi.border_point_to_cell(p.x, p.y))) for p in fa.polygon]
         canvas.fill_polygon(corners, c, 0.35)
         canvas.polyline([(round(x), round(y)) for x, y in corners], c, closed=True, thickness=thick)
     for vw in mi.virtual_walls:
-        (x0, y0), (x1, y1) = (vp.corner(*_cp(mi.world_to_cell(p))) for p in (vw.start, vw.end))
+        (x0, y0), (x1, y1) = (vp.corner(*_cp(mi.border_point_to_cell(p.x, p.y))) for p in (vw.start, vw.end))
         canvas.line(round(x0), round(y0), round(x1), round(y1), theme.virtual_wall, thick)
 
     _draw_objects(canvas, mi, vp, theme, thick)

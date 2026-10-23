@@ -496,6 +496,9 @@
     },
     "unknown_rooms": {
       "message": "Der Roboter hat keinen Raum mit der ID {rooms}."
+    },
+    "unknown_no_go_zones": {
+      "message": "Keine Sperrzone mit der ID {ids}."
     }
   },
   "selector": {
@@ -579,6 +582,13 @@
         "weighing_scale": "Waage"
       }
     },
+    "no_go_type": {
+      "options": {
+        "no_entry": "Nicht befahren",
+        "no_vacuum": "Nicht saugen",
+        "no_mop": "Nicht wischen"
+      }
+    },
     "obstacle_type": {
       "options": {
         "unspecified": "Gegenstand",
@@ -629,6 +639,20 @@
     }
   },
   "services": {
+    "add_no_go_zones": {
+      "name": "Sperrzonen hinzufügen",
+      "description": "Fügt der Karte des Roboters Rechtecke hinzu, die er nicht befahren (oder nicht saugen bzw. wischen) soll.",
+      "fields": {
+        "zones": {
+          "name": "Zonen",
+          "description": "Liste von Rechtecken [x1, y1, x2, y2] in Millimetern, wie bei clean_zone."
+        },
+        "type": {
+          "name": "Art",
+          "description": "Was der Roboter dort nicht tun soll."
+        }
+      }
+    },
     "clean_rooms": {
       "name": "Räume reinigen",
       "description": "Reinigt die Räume des Roboters nach ID in der angegebenen Reihenfolge, mit aktueller Saugstärke, Mopp-Feuchte und Reinigungsmodus. Das Kartenbild nennt die Raum-IDs.",
@@ -654,6 +678,16 @@
         "repeats": {
           "name": "Durchgänge",
           "description": "Wie oft jede Zone gereinigt wird (1 bis 3)."
+        }
+      }
+    },
+    "delete_no_go_zones": {
+      "name": "Sperrzonen löschen",
+      "description": "Löscht Sperrzonen nach ID (siehe no_go_zones am Kartenbild). Ohne IDs werden alle Sperrzonen gelöscht.",
+      "fields": {
+        "ids": {
+          "name": "IDs",
+          "description": "IDs der zu löschenden Zonen; leer lassen für alle."
         }
       }
     },

@@ -9,7 +9,7 @@ from __future__ import annotations
 import base64
 from typing import Any
 
-from .map import CELL_UNKNOWN, CELL_WALL, MapInfo
+from .map import CELL_UNKNOWN, CELL_WALL, MapInfo, Point
 from .render import MapRenderer, Viewport
 
 MAP_SCALE = 4  # pixels per map cell, as the image entity
@@ -40,6 +40,12 @@ def _room_grid(mi: MapInfo, vp: Viewport) -> bytes:
     return bytes(out)
 
 
+def _px(mi: MapInfo, vp: Viewport, p: Point) -> list[float]:
+    """Border-frame point -> image pixels."""
+    c = mi.border_point_to_cell(p.x, p.y)
+    return [round(v, 1) for v in vp.corner(c.col, c.row)]
+
+
 def build_map_payload(mi: MapInfo) -> dict[str, Any]:
     """The static part of the card's map (runs in the executor)."""
     renderer = MapRenderer(mi, MAP_SCALE)
@@ -64,6 +70,14 @@ def build_map_payload(mi: MapInfo) -> dict[str, Any]:
         "rooms": [
             {"id": r.id, "name": r.name, "bounds": [round(v, 3) for v in bounds.get(r.id, ())]}
             for r in mi.rooms
+        ],
+        "no_go_zones": [
+            {
+                "id": fa.id,
+                "type": int(fa.type),
+                "points": [_px(mi, vp, p) for p in fa.polygon],
+            }
+            for fa in mi.forbiddens
         ],
         "grid": {
             "width": vp.col1 - vp.col0,

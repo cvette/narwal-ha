@@ -11,7 +11,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.translation import async_get_translations
 
 from .const import DOMAIN
-from .protocol import MapInfo
+from .protocol import ForbiddenType, MapInfo
 
 
 def type_name(value: Any) -> str:
@@ -118,3 +118,29 @@ def obstacle_summary(mi: MapInfo, names: ObjectNames) -> str:
 
 def dock_room(mi: MapInfo) -> str | None:
     return room_name_at(mi, mi.station.x, mi.station.y) if mi.station else None
+
+
+NO_GO_TYPES: dict[int, str] = {
+    ForbiddenType.SWEEP_MOP: "no_entry",
+    ForbiddenType.SWEEP: "no_vacuum",
+    ForbiddenType.MOP: "no_mop",
+}
+
+
+def no_go_list(mi: MapInfo) -> list[dict[str, Any]]:
+    """No-go zones drawn as areas, with their bounds in millimetres (the
+    frame of clean_zone); zones that block a whole room are listed too."""
+    zones = []
+    for fa in mi.forbiddens:
+        corners = [mi.border_to_world(p.x, p.y) for p in fa.polygon]
+        xs = [p.x for p in corners] or [0.0]
+        ys = [p.y for p in corners] or [0.0]
+        zones.append(
+            {
+                "id": fa.id,
+                "type": NO_GO_TYPES.get(fa.type, str(int(fa.type))),
+                "room_wide": fa.mode == 1,
+                "bounds": [round(min(xs) * 1000), round(min(ys) * 1000), round(max(xs) * 1000), round(max(ys) * 1000)],
+            }
+        )
+    return zones

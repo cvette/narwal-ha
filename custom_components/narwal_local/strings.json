@@ -496,6 +496,9 @@
     },
     "unknown_rooms": {
       "message": "The robot has no room with id {rooms}."
+    },
+    "unknown_no_go_zones": {
+      "message": "No no-go zone with id {ids}."
     }
   },
   "selector": {
@@ -579,6 +582,13 @@
         "weighing_scale": "Scale"
       }
     },
+    "no_go_type": {
+      "options": {
+        "no_entry": "No entry",
+        "no_vacuum": "No vacuuming",
+        "no_mop": "No mopping"
+      }
+    },
     "obstacle_type": {
       "options": {
         "unspecified": "Object",
@@ -629,6 +639,20 @@
     }
   },
   "services": {
+    "add_no_go_zones": {
+      "name": "Add no-go zones",
+      "description": "Adds rectangles the robot must not enter (or not vacuum or mop) to its map.",
+      "fields": {
+        "zones": {
+          "name": "Zones",
+          "description": "List of rectangles [x1, y1, x2, y2] in millimetres, as for clean_zone."
+        },
+        "type": {
+          "name": "Type",
+          "description": "What the robot must not do there."
+        }
+      }
+    },
     "clean_rooms": {
       "name": "Clean rooms",
       "description": "Cleans the robot's rooms by id, in the given order, with the current suction, mop humidity and cleaning mode. The map image lists the room ids.",
@@ -654,6 +678,16 @@
         "repeats": {
           "name": "Repeats",
           "description": "How often each zone is cleaned (1 to 3)."
+        }
+      }
+    },
+    "delete_no_go_zones": {
+      "name": "Delete no-go zones",
+      "description": "Deletes no-go zones by id (listed in the map image's no_go_zones). Without ids, all no-go zones are deleted.",
+      "fields": {
+        "ids": {
+          "name": "Ids",
+          "description": "Ids of the zones to delete; leave empty for all."
         }
       }
     },

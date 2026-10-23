@@ -149,8 +149,8 @@ def main() -> None:
 
     fid, ftype, frect = FORBIDDEN
     fa = Writer()
-    for c, r in rect(*frect):
-        fa.message(1, world_point(c, r))
+    for c, r in rect(*frect):  # border-frame floats, like furniture (verified on a robot)
+        fa.message(1, border_float(c, r))
     m.message(9, fa.varint(2, ftype).varint(3, fid))
 
     for a, b, gap in DOORS:

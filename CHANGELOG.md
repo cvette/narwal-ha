@@ -5,6 +5,18 @@ All notable changes to Narwal Local. Versions follow the `version` in
 built from the tag of the same name. "Verified" means checked on a real
 robot.
 
+## 0.11.0 – 2026-10-23
+
+- No-go zones: actions `narwal_local.add_no_go_zones` (no entry, no
+  vacuuming or no mopping) and `narwal_local.delete_no_go_zones`, sent as a
+  map edit like the app's, verified on a robot; `image.narwal_map` lists the
+  zones with ids.
+- Map card: a no-go mode to draw new zones and tap existing ones to delete
+  them.
+- Fix: existing no-go zones (and virtual walls) were read as metres; they
+  are map cells like furniture, so maps with no-go zones showed them in the
+  wrong place.
+
 ## 0.10.0 – 2026-10-23
 
 - Map card `custom:narwal-map-card`, served and registered by the

@@ -1,13 +1,13 @@
 /*
  * Narwal Local map card: the robot's map with its live position and path,
- * tap rooms or draw zones to clean them.
+ * tap rooms or draw zones to clean them, and edit no-go zones.
  *
  * Served and registered by the Narwal Local integration; no extra
  * installation. The map comes from the websocket command narwal_local/map,
  * the position from sensor.narwal_position (map metres).
  */
 
-const CARD_VERSION = "1.0.0";
+const CARD_VERSION = "1.1.0";
 
 const TEXT = {
   en: {
@@ -28,6 +28,12 @@ const TEXT = {
     noEntity: "Choose a Narwal vacuum in the card's settings.",
     loading: "Loading map…",
     started: "Cleaning started.",
+    nogo: "No-go",
+    nogoHint: "Drag to add no-go zones; tap a zone to delete it.",
+    nogoChanges: (a, d) => [a ? `${a} new` : "", d ? `${d} to delete` : ""].filter(Boolean).join(", "),
+    save: "Save",
+    saved: "No-go zones saved.",
+    nogoTypes: { no_entry: "No entry", no_vacuum: "No vacuuming", no_mop: "No mopping" },
   },
   de: {
     rooms: "Räume",
@@ -47,6 +53,12 @@ const TEXT = {
     noEntity: "In den Karteneinstellungen einen Narwal-Sauger wählen.",
     loading: "Karte wird geladen…",
     started: "Reinigung gestartet.",
+    nogo: "Sperrzonen",
+    nogoHint: "Ziehen für neue Sperrzonen; eine Zone antippen, um sie zu löschen.",
+    nogoChanges: (a, d) => [a ? `${a} neu` : "", d ? `${d} zu löschen` : ""].filter(Boolean).join(", "),
+    save: "Speichern",
+    saved: "Sperrzonen gespeichert.",
+    nogoTypes: { no_entry: "Nicht befahren", no_vacuum: "Nicht saugen", no_mop: "Nicht wischen" },
   },
 };
 
@@ -64,7 +76,7 @@ const STYLE = `
   .map img, .map canvas, .map svg { display: block; width: 100%; height: auto; }
   .map canvas, .map svg { position: absolute; inset: 0; height: 100%; }
   .map canvas { image-rendering: pixelated; opacity: 0.45; pointer-events: none; }
-  .map.mode-zones { cursor: crosshair; }
+  .map.mode-zones, .map.mode-nogo { cursor: crosshair; }
   .robot { transition: transform 1s linear; }
   .msg { padding: 24px 16px; color: var(--secondary-text-color); text-align: center; }
   .bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 16px; color: var(--primary-text-color); }
@@ -92,6 +104,9 @@ class NarwalMapCard extends HTMLElement {
     this._rooms = []; // selected room ids, in order
     this._zones = []; // [x1, y1, x2, y2] in image pixels
     this._draft = null;
+    this._nogoAdd = []; // new no-go rectangles in image pixels
+    this._nogoDelete = new Set(); // ids of existing zones to delete
+    this._nogoType = "no_entry";
     this._path = [];
     this._repeats = 1;
     this._lastPos = null;
@@ -167,6 +182,8 @@ class NarwalMapCard extends HTMLElement {
         this._map = res;
         this._grid = Uint8Array.from(atob(res.grid.data), (c) => c.charCodeAt(0));
         this._rooms = this._rooms.filter((id) => res.rooms.some((r) => r.id === id));
+        const ids = new Set((res.no_go_zones || []).map((z) => z.id));
+        this._nogoDelete = new Set([...this._nogoDelete].filter((id) => ids.has(id)));
         this._render();
       } else if (this._map) {
         Object.assign(this._map, { path: res.path, position_entity: res.position_entity });
@@ -244,11 +261,14 @@ class NarwalMapCard extends HTMLElement {
       </div>
       <div class="bar">
         <div class="seg">
-          <button data-mode="rooms">${t.rooms}</button><button data-mode="zones">${t.zones}</button>
+          <button data-mode="rooms">${t.rooms}</button><button data-mode="zones">${t.zones}</button><button data-mode="nogo">${t.nogo}</button>
         </div>
         <span class="spacer"></span>
-        <label>${t.repeats} <select class="repeats">
+        <label class="for-clean">${t.repeats} <select class="repeats">
           <option>1</option><option>2</option><option>3</option></select></label>
+        <select class="nogo-type for-nogo">${Object.entries(t.nogoTypes)
+          .map(([k, v]) => `<option value="${k}">${v}</option>`)
+          .join("")}</select>
         <button data-act="clear">${t.clear}</button>
         <button data-act="clean" class="primary">${t.clean}</button>
         <div class="hint"></div>
@@ -268,6 +288,9 @@ class NarwalMapCard extends HTMLElement {
     const sel = root.querySelector(".repeats");
     sel.value = String(this._repeats);
     sel.addEventListener("change", () => (this._repeats = Number(sel.value)));
+    const type = root.querySelector(".nogo-type");
+    type.value = this._nogoType;
+    type.addEventListener("change", () => (this._nogoType = type.value));
 
     const svg = root.querySelector("svg");
     const point = (ev) => {
@@ -284,7 +307,13 @@ class NarwalMapCard extends HTMLElement {
         else this._rooms.push(id);
         this._message = "";
         this._update();
-      } else if (this._zones.length < MAX_ZONES) {
+      } else if (this._mode === "nogo" && this._nogoZoneAt(x, y)) {
+        const id = this._nogoZoneAt(x, y);
+        if (this._nogoDelete.has(id)) this._nogoDelete.delete(id);
+        else this._nogoDelete.add(id);
+        this._message = "";
+        this._update();
+      } else if (this._drawTarget().length < MAX_ZONES) {
         svg.setPointerCapture(ev.pointerId);
         this._draft = [x, y, x, y];
         this._update();
@@ -301,12 +330,32 @@ class NarwalMapCard extends HTMLElement {
       if (!this._draft) return;
       const [x1, y1, x2, y2] = this._draft;
       this._draft = null;
-      if (Math.abs(x2 - x1) > 8 && Math.abs(y2 - y1) > 8) this._zones.push([x1, y1, x2, y2]);
+      if (Math.abs(x2 - x1) > 8 && Math.abs(y2 - y1) > 8) this._drawTarget().push([x1, y1, x2, y2]);
       this._message = "";
       this._update();
     };
     svg.addEventListener("pointerup", finish);
     svg.addEventListener("pointercancel", finish);
+  }
+
+  _drawTarget() {
+    return this._mode === "nogo" ? this._nogoAdd : this._zones;
+  }
+
+  _nogoZoneAt(px, py) {
+    // Topmost zone under the point (point-in-polygon on its corners), or 0.
+    const zones = this._map.no_go_zones || [];
+    for (let i = zones.length - 1; i >= 0; i--) {
+      const pts = zones[i].points;
+      let inside = false;
+      for (let a = 0, b = pts.length - 1; a < pts.length; b = a++) {
+        const [xa, ya] = pts[a];
+        const [xb, yb] = pts[b];
+        if (ya > py !== yb > py && px < ((xb - xa) * (py - ya)) / (yb - ya) + xa) inside = !inside;
+      }
+      if (inside) return zones[i].id;
+    }
+    return 0;
   }
 
   _update() {
@@ -350,9 +399,16 @@ class NarwalMapCard extends HTMLElement {
     this._drawZones();
 
     root.querySelectorAll("[data-mode]").forEach((b) => b.classList.toggle("on", b.dataset.mode === this._mode));
-    const count = this._mode === "rooms" ? this._rooms.length : this._zones.length;
+    const nogo = this._mode === "nogo";
+    const count =
+      this._mode === "rooms" ? this._rooms.length : nogo ? this._nogoAdd.length + this._nogoDelete.size : this._zones.length;
     const clean = root.querySelector('[data-act="clean"]');
-    if (clean) clean.disabled = count === 0;
+    if (clean) {
+      clean.disabled = count === 0;
+      clean.textContent = nogo ? t.save : t.clean;
+    }
+    root.querySelectorAll(".for-clean").forEach((el) => (el.style.display = nogo ? "none" : ""));
+    root.querySelectorAll(".for-nogo").forEach((el) => (el.style.display = nogo ? "" : "none"));
     const hint = root.querySelector(".hint");
     if (hint) {
       const names = this._rooms.map((id) => (this._map.rooms.find((r) => r.id === id) || {}).name).filter(Boolean);
@@ -362,9 +418,11 @@ class NarwalMapCard extends HTMLElement {
           ? names.length
             ? `${t.nRooms(names.length)}: ${names.join(" → ")}`
             : t.tapRooms
-          : this._zones.length
-            ? t.nZones(this._zones.length)
-            : t.drawZones);
+          : nogo
+            ? t.nogoChanges(this._nogoAdd.length, this._nogoDelete.size) || t.nogoHint
+            : this._zones.length
+              ? t.nZones(this._zones.length)
+              : t.drawZones);
     }
     const start = root.querySelector('[data-act="start"]');
     if (start) start.textContent = vac && vac.state === "cleaning" ? t.pause : t.start;
@@ -390,6 +448,7 @@ class NarwalMapCard extends HTMLElement {
   _drawZones() {
     const g = this.shadowRoot.querySelector(".zone-layer");
     if (!g) return;
+    if (this._mode === "nogo") return this._drawNogo(g);
     const rects = this._mode === "zones" ? [...this._zones, ...(this._draft ? [this._draft] : [])] : [];
     g.innerHTML = rects
       .map(([x1, y1, x2, y2], i) => {
@@ -403,6 +462,47 @@ class NarwalMapCard extends HTMLElement {
       .join("");
   }
 
+  _drawNogo(g) {
+    const red = "var(--error-color, #db4437)";
+    const existing = (this._map.no_go_zones || []).map((z) => {
+      const del = this._nogoDelete.has(z.id);
+      const pts = z.points.map((p) => p.join(",")).join(" ");
+      const n = z.points.length;
+      const cx = z.points.reduce((a, p) => a + p[0] / n, 0);
+      const cy = z.points.reduce((a, p) => a + p[1] / n, 0);
+      const cross = del
+        ? `<path d="M${cx - 8} ${cy - 8} L${cx + 8} ${cy + 8} M${cx + 8} ${cy - 8} L${cx - 8} ${cy + 8}"
+            stroke="${red}" stroke-width="3" stroke-linecap="round"></path>`
+        : "";
+      return `<polygon points="${pts}" fill="${del ? "none" : red}" fill-opacity="0.15" stroke="${red}"
+          stroke-width="2" stroke-dasharray="${del ? "4 4" : "none"}"></polygon>${cross}`;
+    });
+    const added = [...this._nogoAdd, ...(this._draft ? [this._draft] : [])].map(([x1, y1, x2, y2]) => {
+      const x = Math.min(x1, x2);
+      const y = Math.min(y1, y2);
+      return `<rect x="${x}" y="${y}" width="${Math.abs(x2 - x1)}" height="${Math.abs(y2 - y1)}"
+        fill="${red}" fill-opacity="0.3" stroke="${red}" stroke-width="2" stroke-dasharray="6 4"></rect>`;
+    });
+    g.innerHTML = [...existing, ...added].join("");
+  }
+
+  async _saveNogo(entity_id) {
+    const hass = this._hass;
+    if (this._nogoAdd.length) {
+      const zones = this._nogoAdd.map(([x1, y1, x2, y2]) =>
+        [...this._toWorld(x1, y1), ...this._toWorld(x2, y2)].map((v) => Math.round(v * 1000)),
+      );
+      await hass.callService("narwal_local", "add_no_go_zones", { zones, type: this._nogoType }, { entity_id });
+      this._nogoAdd = [];
+    }
+    if (this._nogoDelete.size) {
+      await hass.callService("narwal_local", "delete_no_go_zones", { ids: [...this._nogoDelete] }, { entity_id });
+      this._nogoDelete = new Set();
+    }
+    this._message = this._t.saved;
+    await this._load(); // the map changed: fetch it again
+  }
+
   // --- actions -----------------------------------------------------------------
 
   async _act(act) {
@@ -412,8 +512,13 @@ class NarwalMapCard extends HTMLElement {
     try {
       if (act === "clear") {
         if (this._mode === "rooms") this._rooms = [];
-        else this._zones = [];
+        else if (this._mode === "nogo") {
+          this._nogoAdd = [];
+          this._nogoDelete = new Set();
+        } else this._zones = [];
         this._message = "";
+      } else if (act === "clean" && this._mode === "nogo") {
+        await this._saveNogo(entity_id);
       } else if (act === "clean") {
         if (this._mode === "rooms") {
           await hass.callService("narwal_local", "clean_rooms", { rooms: this._rooms, repeats: this._repeats }, { entity_id });

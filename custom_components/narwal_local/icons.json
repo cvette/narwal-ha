@@ -103,11 +103,17 @@
     }
   },
   "services": {
+    "add_no_go_zones": {
+      "service": "mdi:cancel"
+    },
     "clean_rooms": {
       "service": "mdi:floor-plan"
     },
     "clean_zone": {
       "service": "mdi:selection-drag"
+    },
+    "delete_no_go_zones": {
+      "service": "mdi:delete-outline"
     },
     "reset_consumables": {
       "service": "mdi:restore"

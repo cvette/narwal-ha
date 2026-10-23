@@ -141,6 +141,8 @@ of the current clean, and lets you
 
 - tap rooms (in the order to clean them) and start a clean of just those,
 - switch to **Zones**, drag up to 10 rectangles on the map and clean them,
+- add no-go zones (**Sperrzonen**/**No-go**) by dragging, or tap existing ones to
+  delete them, then save,
 - choose 1 to 3 passes, and start, pause, stop, dock or locate the robot.
 
 ```yaml
@@ -202,6 +204,25 @@ map_modes:
         zones: "[[selection]]"
         repeats: "[[repeats]]"
 ```
+
+## No-go zones
+
+Areas the robot must not enter, vacuum or mop, the same ones the Narwal app
+edits. `image.narwal_map` lists them in `no_go_zones` with their id, type
+(`no_entry`, `no_vacuum`, `no_mop`) and bounds in millimetres.
+
+```yaml
+action: narwal_local.add_no_go_zones
+target:
+  entity_id: vacuum.narwal
+data:
+  zones:
+    - [1200, 3400, 2000, 4000]
+  type: no_entry      # or no_vacuum / no_mop
+```
+
+`narwal_local.delete_no_go_zones` deletes zones by `ids`, or all of them
+without ids. The map card does both in its no-go mode.
 
 ## Position and floor plan
 

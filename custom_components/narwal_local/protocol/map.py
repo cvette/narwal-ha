@@ -1,15 +1,19 @@
 """StaticMapPayload decoding (from /map/get_map).
 
-Two coordinate systems are in play, both verified on a real robot:
+Everything on the map is in the border frame, cells of the map's
+resolution offset by the map border: col = x - border.left,
+row = y - border.bottom.
 
-* Forbidden areas and virtual walls are world metres:
-  col = (x - originX) / resolution, row = (y - originY) / resolution.
-* Doors, carpets and no-carpet areas are integer cells in the border frame:
-  col = x - border.left, row = y - border.bottom.
+* Doors, carpets and no-carpet areas are integer cells.
+* The dock, the robot pose, furniture, camera-detected objects and no-go
+  zones (forbidden areas) are float cells (verified: a double bed lands in
+  the bedroom, a toilet in the bathroom, and a no-go zone written this way
+  appears where it was drawn; the robot rounds its corners to whole cells).
+  Virtual walls go through the same filter in the app, so they are taken to
+  be float cells too (not seen on a robot yet).
 
-* The dock, the robot pose, furniture and camera-detected objects are float
-  cells in the same border frame (verified: a double bed lands in the
-  bedroom, a toilet in the bathroom).
+World metres, the frame of zone cleaning and the position sensor, follow
+from origin and resolution: x = originX + col * resolution, likewise y.
 
 Cells and rows are in the stored orientation (row 0 at the bottom); flip
 vertically for display.
@@ -80,7 +84,7 @@ class ForbiddenArea:
     id: int = 0  # 3
     type: ForbiddenType | int = ForbiddenType.UNSPECIFIED  # 2
     mode: int = 0  # 5 (REGION=0, ROOM=1)
-    polygon: list[Point] = field(default_factory=list)  # 1, world metres
+    polygon: list[Point] = field(default_factory=list)  # 1, border-frame float cells
 
 
 @dataclass(slots=True)
@@ -225,6 +229,16 @@ class MapInfo:
             bounds[room_id] = (lo.x, lo.y, hi.x, hi.y)
         return bounds
 
+    def border_to_world(self, x: float, y: float) -> Point:
+        """Border-frame point (cells) -> world metres."""
+        c = self.border_point_to_cell(x, y)
+        return self.cell_to_world(c.col, c.row)
+
+    def world_to_border_point(self, x: float, y: float) -> tuple[float, float]:
+        """World metres -> border-frame float cells (no-go zone corners)."""
+        c = self.world_to_cell(Point(x, y))
+        return c.col + self.border_left, c.row + self.border_bottom
+
     def world_to_border(self, x: float, y: float) -> tuple[int, int]:
         """World point in metres -> integer border-frame cell (the frame zones
         are sent in)."""
@@ -309,15 +323,15 @@ class MapInfo:
                 {
                     "id": fa.id,
                     "type": int(fa.type),
-                    "polygon": [cp(self.world_to_cell(p)) for p in fa.polygon],
+                    "polygon": [cp(self.border_point_to_cell(p.x, p.y)) for p in fa.polygon],
                 }
                 for fa in self.forbiddens
             ],
             "walls": [
                 {
                     "id": vw.id,
-                    "start": cp(self.world_to_cell(vw.start)),
-                    "end": cp(self.world_to_cell(vw.end)),
+                    "start": cp(self.border_point_to_cell(vw.start.x, vw.start.y)),
+                    "end": cp(self.border_point_to_cell(vw.end.x, vw.end.y)),
                 }
                 for vw in self.virtual_walls
             ],

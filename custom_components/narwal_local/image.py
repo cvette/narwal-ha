@@ -15,7 +15,7 @@ from homeassistant.util import dt as dt_util
 from .const import LIVE_MAP_INTERVAL
 from .coordinator import NarwalConfigEntry, NarwalCoordinator
 from .entity import NarwalEntity
-from .map_objects import dirt_list, dock_room, furniture_list, obstacle_list
+from .map_objects import dirt_list, dock_room, furniture_list, no_go_list, obstacle_list
 from .protocol import Activity, MapInfo, MapRenderer, Pose
 from .protocol.render import Viewport, content_viewport
 
@@ -190,6 +190,7 @@ class NarwalMapImage(NarwalEntity, ImageEntity):
             "furniture": furniture_list(mi, names),
             "obstacles": obstacle_list(mi, names),
             "dirt": dirt_list(mi, names),
+            "no_go_zones": no_go_list(mi),
             "calibration_points": self._calibration_points(mi),
         }
 
