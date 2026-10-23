@@ -399,6 +399,24 @@
             "name": "Floor plan heading"
           }
         }
+      },
+      "battery_health": {
+        "name": "Battery health"
+      },
+      "battery_cycles": {
+        "name": "Battery charge cycles"
+      },
+      "battery_capacity": {
+        "name": "Battery capacity"
+      },
+      "battery_temperature": {
+        "name": "Battery temperature"
+      },
+      "battery_voltage": {
+        "name": "Battery voltage"
+      },
+      "battery_current": {
+        "name": "Battery current"
       }
     },
     "switch": {

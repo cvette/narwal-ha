@@ -16,7 +16,16 @@ from homeassistant.components.sensor import (
     SensorEntityDescription,
     SensorStateClass,
 )
-from homeassistant.const import PERCENTAGE, EntityCategory, UnitOfArea, UnitOfLength, UnitOfTime
+from homeassistant.const import (
+    PERCENTAGE,
+    EntityCategory,
+    UnitOfArea,
+    UnitOfElectricCurrent,
+    UnitOfElectricPotential,
+    UnitOfLength,
+    UnitOfTemperature,
+    UnitOfTime,
+)
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.typing import StateType
@@ -222,6 +231,78 @@ LAST_CLEAN_SENSORS: tuple[NarwalSensorDescription, ...] = (
 )
 
 
+def _battery(attr: str) -> Callable[[NarwalData], StateType]:
+    return lambda d: getattr(d.battery, attr) if d.battery else None
+
+
+def _battery_has(attr: str) -> Callable[[NarwalData], bool]:
+    return lambda d: d.battery is not None and getattr(d.battery, attr) is not None
+
+
+BATTERY_SENSORS: tuple[NarwalSensorDescription, ...] = (
+    NarwalSensorDescription(
+        key="battery_health",
+        translation_key="battery_health",
+        native_unit_of_measurement=PERCENTAGE,
+        state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=_battery("health"),
+        exists_fn=_battery_has("health"),
+    ),
+    NarwalSensorDescription(
+        key="battery_cycles",
+        translation_key="battery_cycles",
+        state_class=SensorStateClass.TOTAL_INCREASING,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=_battery("charge_cycles"),
+        exists_fn=_battery_has("charge_cycles"),
+    ),
+    NarwalSensorDescription(
+        key="battery_capacity",
+        translation_key="battery_capacity",
+        native_unit_of_measurement="mAh",
+        state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=_battery("full_charge_capacity"),
+        exists_fn=_battery_has("full_charge_capacity"),
+    ),
+    NarwalSensorDescription(
+        key="battery_temperature",
+        translation_key="battery_temperature",
+        device_class=SensorDeviceClass.TEMPERATURE,
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=_battery("temperature"),
+        exists_fn=_battery_has("temperature"),
+    ),
+    NarwalSensorDescription(
+        key="battery_voltage",
+        translation_key="battery_voltage",
+        device_class=SensorDeviceClass.VOLTAGE,
+        native_unit_of_measurement=UnitOfElectricPotential.VOLT,
+        suggested_display_precision=2,
+        state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
+        value_fn=_battery("voltage"),
+        exists_fn=_battery_has("voltage"),
+    ),
+    NarwalSensorDescription(
+        key="battery_current",
+        translation_key="battery_current",
+        device_class=SensorDeviceClass.CURRENT,
+        native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
+        suggested_display_precision=2,
+        state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
+        value_fn=_battery("current"),
+        exists_fn=_battery_has("current"),
+    ),
+)
+
+
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: NarwalConfigEntry,
@@ -232,6 +313,12 @@ async def async_setup_entry(
         NarwalSensor(coordinator, d) for d in SENSORS if d.exists_fn(coordinator.data)
     ]
     entities += [NarwalRestoreSensor(coordinator, d) for d in LAST_CLEAN_SENSORS]
+    if coordinator.data.battery is not None:
+        entities += [
+            NarwalSensor(coordinator, d)
+            for d in BATTERY_SENSORS
+            if d.exists_fn(coordinator.data)
+        ]
     entities.append(NarwalCurrentRoomSensor(coordinator))
     entities.append(NarwalPositionSensor(coordinator))
     async_add_entities(entities)

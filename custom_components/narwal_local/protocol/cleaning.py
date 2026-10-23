@@ -295,3 +295,12 @@ def decode_clean_plans(payload: bytes) -> list[CleanPlan]:
 
 def build_start_plan_request(plan_id: int, map_id: int) -> bytes:
     return bytes(Writer().varint(1, plan_id, force=True).varint(2, map_id))
+
+
+# --- go to a point: not usable ----------------------------------------------
+#
+# The app's "drive here" exists only in its live video view and sends
+# /telecontrol/point_navi { 4 points[]: PoseData{1 point (border-frame cells)} }.
+# Sent outside a video session (twice, byte for byte as the app sends it,
+# robot docked and idle) the robot dropped the connection and restarted its
+# control software; it recovered on its own. So it is not offered here.

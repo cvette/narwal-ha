@@ -30,6 +30,7 @@ from .const import (
 from .map_objects import ObjectNames
 from .protocol import (
     TOPIC_CLEAN_REPORT,
+    BatteryInfo,
     TOPIC_DISPLAY_MAP,
     TOPIC_ROBOT_BASE_STATUS,
     TOPIC_WORKING_STATUS,
@@ -75,6 +76,7 @@ class NarwalData:
     names: ObjectNames = field(default_factory=ObjectNames)
     config: RobotConfig | None = None
     plans: tuple[CleanPlan, ...] | None = None  # saved in the Narwal app
+    battery: BatteryInfo | None = None  # health, cycles, temperature, …
 
 
 @dataclass(frozen=True, slots=True)
@@ -162,6 +164,7 @@ class NarwalCoordinator(DataUpdateCoordinator[NarwalData]):
                 plans = await self._async_get_plans(plans)
                 self._map_due = now + MAP_INTERVAL
             config = await self._async_get_config(previous.config if previous else None)
+            battery = await self._async_get_battery(previous.battery if previous else None)
         except NarwalError as err:
             raise UpdateFailed(
                 translation_domain=DOMAIN,
@@ -178,7 +181,18 @@ class NarwalCoordinator(DataUpdateCoordinator[NarwalData]):
             names=self.names,
             config=config,
             plans=plans,
+            battery=battery,
         )
+
+    async def _async_get_battery(self, previous: BatteryInfo | None) -> BatteryInfo | None:
+        """Battery health, for robots that report it."""
+        if not self.static.features.supports("supportBatteryHealthInfo"):
+            return None
+        try:
+            return await self.robot.get_battery_info()
+        except (NarwalCommandError, NarwalTimeoutError) as err:
+            _LOGGER.debug("Reading the battery info failed: %s", err)
+            return previous
 
     async def _async_get_plans(
         self, previous: tuple[CleanPlan, ...] | None

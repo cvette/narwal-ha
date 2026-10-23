@@ -21,6 +21,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry  # noqa
 
 from custom_components.narwal_local.const import DOMAIN  # noqa: E402
 from custom_components.narwal_local.protocol import (  # noqa: E402
+    BatteryInfo,
     DisturbMode,
     Message,
     NarwalCommandError,
@@ -78,6 +79,7 @@ class FakeRobot:
         self.config = decode_config(config_payload())
         self.config_supported = True
         self.plans: list = []
+        self.battery = BatteryInfo(6063, 80, 98, 27.3, 16.393, -0.126, 100, None)
 
     def __call__(self, host: str, port: int = 9002, **_: object) -> FakeRobot:
         """Acts as the NarwalRobot constructor."""
@@ -200,6 +202,10 @@ class FakeRobot:
             zones.append(ForbiddenArea(id=next_id + offset, type=zone.type, polygon=polygon))
         self.map = replace(self.map, forbiddens=zones, edit_version=self.map.edit_version + 1)
         return self.map
+
+    async def get_battery_info(self):
+        self._ensure()
+        return self.battery
 
     async def start_plan(self, plan):
         await self._command("start_plan", plan.id)

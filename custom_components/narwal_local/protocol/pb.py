@@ -85,6 +85,12 @@ class Field:
         return struct.unpack("<f", self.data)[0]
 
     @property
+    def double(self) -> float:
+        if self.wtype != WIRE_FIXED64:
+            raise ProtobufError(f"field {self.num} is not fixed64")
+        return struct.unpack("<d", self.data)[0]
+
+    @property
     def text(self) -> str:
         return self.data.decode("utf-8", errors="replace")
 
@@ -183,4 +189,10 @@ class Writer:
         """fixed32 float, always written (map coordinates may be 0.0)."""
         self.tag(num, WIRE_FIXED32)
         self._buf += struct.pack("<f", value)
+        return self
+
+    def double(self, num: int, value: float) -> Writer:
+        """fixed64 double, always written."""
+        self.tag(num, WIRE_FIXED64)
+        self._buf += struct.pack("<d", value)
         return self

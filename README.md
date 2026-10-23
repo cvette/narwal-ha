@@ -54,6 +54,7 @@ Assistant `config/custom_components/` folder and restart.
 | `sensor.narwal_clean_water_tank`, `_dirty_water_tank`, `_detergent`, `_dust_box`, `_station_dust_bag`, `_dust_bag` | station and robot parts: OK, empty, missing, running low, please empty / replace, fault (only those your robot reports) |
 | `binary_sensor.narwal_clean_water_empty`, `_dirty_water_full`, `_detergent_low` | problem sensors for notifications |
 | `sensor.narwal_charging_status`, `_error_code` | diagnostics |
+| `sensor.narwal_battery_health`, `_battery_charge_cycles`, `_battery_capacity`, `_battery_temperature` (`_battery_voltage`, `_battery_current` disabled by default) | battery health, for robots that report it |
 | `binary_sensor.narwal_charging`, `_maintenance_needed` | |
 | `select.narwal_mop_humidity` | dry / normal / wet |
 | `select.narwal_cleaning_mode` | how cleans started from Home Assistant run: vacuum and mop / vacuum / mop / vacuum, then mop |
@@ -333,6 +334,12 @@ in the `codes` attribute.
   carpets first and mop drying was checked on a robot. The others use the
   same `/config/set` call with field numbers from the Narwal app, and every
   change is read back.
+- **Sending the robot to a point** is not offered: the app does it only in
+  its live video view, and without a video session the robot drops the
+  connection and restarts its control software (seen twice).
+- **Firmware updates** are offered by Narwal's cloud: the robot only learns
+  the new version from the app, so Home Assistant cannot show or install
+  them.
 - **Schedules** cannot be read or changed locally: the Narwal app keeps
   them in Narwal's cloud. Use Home Assistant automations with
   `vacuum.clean_area` instead; they run without the cloud.

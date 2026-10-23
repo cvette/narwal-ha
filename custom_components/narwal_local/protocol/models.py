@@ -28,7 +28,7 @@ from .enums import (
     TaskType,
 )
 from .features import FEATURE_IS_BOOL, FEATURE_NAMES
-from .pb import WIRE_FIXED32, WIRE_VARINT, Writer, encode_varint, parse, parse_packed_varints
+from .pb import WIRE_FIXED32, WIRE_FIXED64, WIRE_VARINT, Writer, encode_varint, parse, parse_packed_varints
 
 
 def decode_result(payload: bytes) -> ServiceResult | int:
@@ -455,6 +455,35 @@ def decode_check_firmware(payload: bytes) -> FirmwareStatus | int:
         if f.num == 1:
             return FirmwareStatus.from_value(f.int)
     return FirmwareStatus.UNSPECIFIED
+
+
+@dataclass(slots=True, frozen=True)
+class BatteryInfo:
+    """/info/battery_info (GetBatteryInfo_Response): 1 fullChargeCapacity
+    (mAh), 2 chargeCycleCount, 3 sn, 4 soc (%), 5 temperature (°C), 6 voltage
+    (V), 7 electricCurrent (A, negative while discharging), 8 healthState (%),
+    9 ratedCapacity (mAh). Fields the robot leaves out stay None."""
+
+    full_charge_capacity: int | None = None
+    charge_cycles: int | None = None
+    charge: int | None = None
+    temperature: float | None = None
+    voltage: float | None = None
+    current: float | None = None
+    health: int | None = None
+    rated_capacity: int | None = None
+
+
+def decode_battery_info(payload: bytes) -> BatteryInfo:
+    ints = {1: "full_charge_capacity", 2: "charge_cycles", 4: "charge", 8: "health", 9: "rated_capacity"}
+    doubles = {5: "temperature", 6: "voltage", 7: "current"}
+    values: dict[str, object] = {}
+    for f in parse(payload):
+        if f.num in ints and f.wtype == WIRE_VARINT:
+            values[ints[f.num]] = f.int
+        elif f.num in doubles and f.wtype == WIRE_FIXED64:
+            values[doubles[f.num]] = round(f.double, 3)
+    return BatteryInfo(**values)
 
 
 @dataclass(slots=True, frozen=True)

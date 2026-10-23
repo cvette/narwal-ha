@@ -5,6 +5,11 @@ All notable changes to Narwal Local. Versions follow the `version` in
 built from the tag of the same name. "Verified" means checked on a real
 robot.
 
+## Unreleased
+
+- Battery health sensors (diagnostic): health, charge cycles, full-charge
+  capacity, temperature; voltage and current are disabled by default.
+
 ## 0.11.0 – 2026-10-23
 
 - No-go zones: actions `narwal_local.add_no_go_zones` (no entry, no

@@ -44,6 +44,15 @@
     "sensor": {
       "position": {
         "default": "mdi:map-marker-radius"
+      },
+      "battery_health": {
+        "default": "mdi:battery-heart-variant"
+      },
+      "battery_cycles": {
+        "default": "mdi:battery-sync"
+      },
+      "battery_capacity": {
+        "default": "mdi:battery-high"
       }
     },
     "switch": {

@@ -43,12 +43,14 @@ from .frame import SOURCE_APP, FrameError, Header, decode_frame, encode_frame, t
 from .map import MapInfo, decode_get_map_response
 from .map_edit import URL_MAP_OPERATION, NoGoZone, build_no_go_request, decode_map_edit_result
 from .models import (
+    BatteryInfo,
     ConsumableInfo,
     DeviceInfo,
     FeatureList,
     FirmwareVersion,
     RobotBaseStatus,
     build_reset_consumables_request,
+    decode_battery_info,
     decode_check_firmware,
     decode_consumable_info,
     decode_device_base_status,
@@ -71,6 +73,8 @@ TOPIC_DISPLAY_MAP = "/map/display_map"
 TOPIC_DOWNLOAD_STATUS = "/status/download_status"
 TOPIC_UPGRADE_STATUS = "/upgrade/upgrade_status"
 TOPIC_CLEAN_REPORT = "/report/clean_report"
+
+URL_BATTERY_INFO = "/info/battery_info"
 
 
 class NarwalError(Exception):
@@ -424,6 +428,10 @@ class NarwalRobot(NarwalClient):
         if error or result != ServiceResult.PERFORM_SUCCESS:
             raise NarwalCommandError(URL_MAP_OPERATION, error or result)
         return await self.get_map()
+
+    async def get_battery_info(self) -> BatteryInfo:
+        """Battery health: cycles, capacity, temperature, voltage, current."""
+        return decode_battery_info((await self.call(URL_BATTERY_INFO)).payload)
 
     async def get_clean_plans(self) -> list[CleanPlan]:
         """The cleaning plans saved in the Narwal app (all maps)."""

@@ -48,6 +48,7 @@ from .map import DisplayMap, MapInfo, Pose, Room, decode_display_map, decode_get
 from .map_edit import NoGoZone
 from .models import (
     Activity,
+    BatteryInfo,
     CleanReport,
     ConsumableInfo,
     DeviceInfo,
@@ -68,6 +69,7 @@ __all__ = [
     "TOPIC_ROBOT_BASE_STATUS",
     "TOPIC_WORKING_STATUS",
     "Activity",
+    "BatteryInfo",
     "CarpetStrategy",
     "ChargingStatus",
     "CleanMode",

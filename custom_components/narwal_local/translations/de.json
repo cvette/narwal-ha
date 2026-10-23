@@ -399,6 +399,24 @@
             "name": "Ausrichtung auf dem Grundriss"
           }
         }
+      },
+      "battery_health": {
+        "name": "Akkuzustand"
+      },
+      "battery_cycles": {
+        "name": "Akku-Ladezyklen"
+      },
+      "battery_capacity": {
+        "name": "Akkukapazität"
+      },
+      "battery_temperature": {
+        "name": "Akkutemperatur"
+      },
+      "battery_voltage": {
+        "name": "Akkuspannung"
+      },
+      "battery_current": {
+        "name": "Akkustrom"
       }
     },
     "switch": {

@@ -15,6 +15,8 @@ from protocol.enums import (
 )
 from protocol.models import (
     Activity,
+    BatteryInfo,
+    decode_battery_info,
     decode_clean_report,
     decode_check_firmware,
     decode_consumable_info,
@@ -196,3 +198,14 @@ def test_charging_fallback_is_docked() -> None:
 def test_unknown_enum_values_stay_numeric() -> None:
     body = bytes(Writer().message(2, Writer().varint(26, 99)))
     assert decode_device_base_status(body).fan_level == 99
+
+
+def test_battery_info() -> None:
+    """Shaped like the real robot's answer (serial number left out)."""
+    payload = (
+        Writer().varint(1, 6063).varint(2, 80).varint(4, 98)
+        .double(5, 27.3).double(6, 16.393).double(7, -0.126).varint(8, 100)
+    )  # fmt: skip
+    info = decode_battery_info(bytes(payload))
+    assert info == BatteryInfo(6063, 80, 98, 27.3, 16.393, -0.126, 100, None)
+    assert decode_battery_info(b"") == BatteryInfo()
