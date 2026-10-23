@@ -57,6 +57,7 @@ Assistant `config/custom_components/` folder and restart.
 | `binary_sensor.narwal_charging`, `_maintenance_needed` | |
 | `select.narwal_mop_humidity` | dry / normal / wet |
 | `select.narwal_cleaning_mode` | how cleans started from Home Assistant run: vacuum and mop / vacuum / mop / vacuum, then mop |
+| `custom:narwal-map-card` | the interactive map card, see *Map card* |
 | `image.narwal_map` | the map: rooms with names, walls, doors, carpets, no-carpet areas, no-go zones, areas the robot cannot enter (darker), and icons for furniture, objects the camera recognised, dirty spots and the dock; during a clean also the robot and its path |
 | `event.narwal_clean_finished` | fired when the robot reports the end of a clean: event type `completed`, `stopped` (ended by someone) or `interrupted` (error, low battery, …); attributes `result`, `clean_type`, `area` (m²), `duration` (s), `progress` (%), `start`, `end` |
 | `switch.narwal_do_not_disturb`, `time.narwal_do_not_disturb_start`, `_end` | do-not-disturb and its window, in the robot's local time |
@@ -130,6 +131,30 @@ action:
 Settings are read from the robot every 60 s, so changes made in the Narwal app
 show up in Home Assistant too. After a change from Home Assistant the settings
 are read back at once, so the entities show what the robot stored.
+
+## Map card
+
+The integration brings its own dashboard card; there is nothing extra to
+install. Edit a dashboard, **Add card**, and pick **Narwal map** (or use the
+YAML below). The card shows the map with the robot moving live and the path
+of the current clean, and lets you
+
+- tap rooms (in the order to clean them) and start a clean of just those,
+- switch to **Zones**, drag up to 10 rectangles on the map and clean them,
+- choose 1 to 3 passes, and start, pause, stop, dock or locate the robot.
+
+```yaml
+type: custom:narwal-map-card
+entity: vacuum.narwal
+title: Narwal          # optional
+show_controls: true    # optional: the start / stop / dock / locate row
+```
+
+The card follows your theme and Home Assistant's language (English and
+German). After an update of the integration, reload the browser page once if
+the card still looks old. Room cleaning from the card uses the action
+`narwal_local.clean_rooms` (room ids, as listed by the map image), which
+works in scripts too.
 
 ## Zone cleaning
 

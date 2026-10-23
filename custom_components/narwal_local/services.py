@@ -1,4 +1,4 @@
-"""Actions: reset consumable reminders, clean zones."""
+"""Actions: reset consumable reminders, clean zones or rooms."""
 
 from __future__ import annotations
 
@@ -16,6 +16,7 @@ from .protocol.enums import MAINTAIN_ITEM_NAMES, REPLACE_ITEM_NAMES
 
 SERVICE_RESET_CONSUMABLES = "reset_consumables"
 SERVICE_CLEAN_ZONE = "clean_zone"
+SERVICE_CLEAN_ROOMS = "clean_rooms"
 ATTR_CONFIG_ENTRY_ID = "config_entry_id"
 ATTR_ITEMS = "items"
 
@@ -28,6 +29,11 @@ MAX_ZONES = 10  # the app's limit for drawn areas
 ZONE = vol.All(list, vol.Length(min=4, max=4), [vol.Coerce(float)])
 CLEAN_ZONE_SCHEMA = {
     vol.Required("zones"): vol.All(cv.ensure_list, [ZONE], vol.Length(min=1, max=MAX_ZONES)),
+    vol.Optional("repeats", default=1): vol.All(vol.Coerce(int), vol.Range(min=1, max=3)),
+}
+
+CLEAN_ROOMS_SCHEMA = {
+    vol.Required("rooms"): vol.All(cv.ensure_list, [vol.Coerce(int)], vol.Length(min=1)),
     vol.Optional("repeats", default=1): vol.All(vol.Coerce(int), vol.Range(min=1, max=3)),
 }
 
@@ -84,4 +90,12 @@ def async_setup_services(hass: HomeAssistant) -> None:
         entity_domain=VACUUM_DOMAIN,
         schema=CLEAN_ZONE_SCHEMA,
         func="async_clean_zone",
+    )
+    service.async_register_platform_entity_service(
+        hass,
+        DOMAIN,
+        SERVICE_CLEAN_ROOMS,
+        entity_domain=VACUUM_DOMAIN,
+        schema=CLEAN_ROOMS_SCHEMA,
+        func="async_clean_rooms",
     )

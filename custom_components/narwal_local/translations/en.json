@@ -493,6 +493,9 @@
     },
     "zone_too_small": {
       "message": "Zone {zone} is too small; corners need different x and y values."
+    },
+    "unknown_rooms": {
+      "message": "The robot has no room with id {rooms}."
     }
   },
   "selector": {
@@ -626,6 +629,20 @@
     }
   },
   "services": {
+    "clean_rooms": {
+      "name": "Clean rooms",
+      "description": "Cleans the robot's rooms by id, in the given order, with the current suction, mop humidity and cleaning mode. The map image lists the room ids.",
+      "fields": {
+        "rooms": {
+          "name": "Rooms",
+          "description": "Room ids, in the order to clean them."
+        },
+        "repeats": {
+          "name": "Repeats",
+          "description": "How often each room is cleaned (1 to 3)."
+        }
+      }
+    },
     "clean_zone": {
       "name": "Clean zones",
       "description": "Cleans rectangles on the map, in the given order, with the current suction, mop humidity and cleaning mode.",

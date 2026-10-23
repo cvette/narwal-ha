@@ -11,6 +11,7 @@ from homeassistant.helpers.typing import ConfigType
 
 from .const import DEFAULT_PORT, DOMAIN, REPORT_SECONDS
 from .coordinator import NarwalConfigEntry, NarwalCoordinator, NarwalStatic
+from .map_card import async_forget_map, async_setup_card
 from .map_objects import async_load_names
 from .protocol import NarwalError, NarwalRobot
 from .services import async_setup_services
@@ -33,8 +34,9 @@ CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
-    """Register the integration's actions once, for all robots."""
+    """Register the integration's actions and the map card once, for all robots."""
     async_setup_services(hass)
+    await async_setup_card(hass)
     return True
 
 
@@ -91,4 +93,5 @@ def _remove_retired_entities(hass: HomeAssistant, device_id: str) -> None:
 async def async_unload_entry(hass: HomeAssistant, entry: NarwalConfigEntry) -> bool:
     if unloaded := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
         await entry.runtime_data.async_shutdown()
+        async_forget_map(hass, entry.entry_id)
     return unloaded

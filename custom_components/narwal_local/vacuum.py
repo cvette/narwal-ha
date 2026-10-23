@@ -106,6 +106,22 @@ class NarwalVacuum(NarwalEntity, StateVacuumEntity):
         rooms = [int(segment_id) for segment_id in segment_ids]
         await self._start(rooms)
 
+    async def async_clean_rooms(self, rooms: list[int], repeats: int = 1) -> None:
+        """Clean the robot's rooms by id, in this order (the map card's room
+        selection; vacuum.clean_area does the same with Home Assistant areas)."""
+        mi = self.coordinator.data.map
+        known = {r.id for r in mi.rooms} if mi else set()
+        if unknown := [r for r in rooms if r not in known]:
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="unknown_rooms",
+                translation_placeholders={"rooms": ", ".join(map(str, unknown))},
+            )
+        await self.coordinator.async_command(
+            self.coordinator.robot.start_clean(rooms, mode=self.coordinator.clean_mode, count=repeats)
+        )
+        await self.coordinator.async_request_refresh()
+
     async def async_clean_zone(self, zones: list[list[float]], repeats: int = 1) -> None:
         """Clean rectangles given as [x1, y1, x2, y2] in millimetres in the
         map's frame (see the map image's calibration_points)."""

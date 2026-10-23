@@ -493,6 +493,9 @@
     },
     "zone_too_small": {
       "message": "Die Zone {zone} ist zu klein; die Ecken brauchen unterschiedliche x- und y-Werte."
+    },
+    "unknown_rooms": {
+      "message": "Der Roboter hat keinen Raum mit der ID {rooms}."
     }
   },
   "selector": {
@@ -626,6 +629,20 @@
     }
   },
   "services": {
+    "clean_rooms": {
+      "name": "Räume reinigen",
+      "description": "Reinigt die Räume des Roboters nach ID in der angegebenen Reihenfolge, mit aktueller Saugstärke, Mopp-Feuchte und Reinigungsmodus. Das Kartenbild nennt die Raum-IDs.",
+      "fields": {
+        "rooms": {
+          "name": "Räume",
+          "description": "Raum-IDs in der Reihenfolge der Reinigung."
+        },
+        "repeats": {
+          "name": "Durchgänge",
+          "description": "Wie oft jeder Raum gereinigt wird (1 bis 3)."
+        }
+      }
+    },
     "clean_zone": {
       "name": "Zonen reinigen",
       "description": "Reinigt Rechtecke auf der Karte in der angegebenen Reihenfolge, mit der aktuellen Saugstärke, Mopp-Feuchte und dem Reinigungsmodus.",

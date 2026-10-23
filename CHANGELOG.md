@@ -5,8 +5,14 @@ All notable changes to Narwal Local. Versions follow the `version` in
 built from the tag of the same name. "Verified" means checked on a real
 robot.
 
-## Unreleased
+## 0.10.0 – 2026-10-23
 
+- Map card `custom:narwal-map-card`, served and registered by the
+  integration: live robot and path, tap rooms or draw zones to clean them,
+  passes, and start / pause / stop / dock / locate. Data comes over the
+  websocket command `narwal_local/map`.
+- Action `narwal_local.clean_rooms`: clean rooms by id, in order, with 1 to 3
+  passes.
 - Zone cleaning, verified: action `narwal_local.clean_zone` cleans rectangles
   given in millimetres; `image.narwal_map` gains `calibration_points`, so map cards
   can turn a drawn rectangle into a zone.
