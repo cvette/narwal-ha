@@ -9,6 +9,9 @@
       },
       "dry_mop": {
         "default": "mdi:weather-windy"
+      },
+      "start_plan": {
+        "default": "mdi:play-box-outline"
       }
     },
     "event": {
@@ -95,6 +98,9 @@
     }
   },
   "services": {
+    "clean_zone": {
+      "service": "mdi:selection-drag"
+    },
     "reset_consumables": {
       "service": "mdi:restore"
     }

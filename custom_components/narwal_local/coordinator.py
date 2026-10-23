@@ -34,6 +34,7 @@ from .protocol import (
     TOPIC_ROBOT_BASE_STATUS,
     TOPIC_WORKING_STATUS,
     CleanMode,
+    CleanPlan,
     CleanReport,
     ConsumableInfo,
     DeviceInfo,
@@ -72,6 +73,7 @@ class NarwalData:
     last_report: CleanReport | None = None
     names: ObjectNames = field(default_factory=ObjectNames)
     config: RobotConfig | None = None
+    plans: tuple[CleanPlan, ...] | None = None  # saved in the Narwal app
 
 
 @dataclass(frozen=True, slots=True)
@@ -149,12 +151,14 @@ class NarwalCoordinator(DataUpdateCoordinator[NarwalData]):
             previous = self.data
             consumables = previous.consumables if previous else None
             map_info = previous.map if previous else None
+            plans = previous.plans if previous else None
             now = dt_util.utcnow()
             if consumables is None or now >= self._consumables_due:
                 consumables = await self.robot.get_consumables()
                 self._consumables_due = now + CONSUMABLES_INTERVAL
             if map_info is None or now >= self._map_due or map_info.map_id != status.map_id:
                 map_info = await self.robot.get_map()
+                plans = await self._async_get_plans(plans)
                 self._map_due = now + MAP_INTERVAL
             config = await self._async_get_config(previous.config if previous else None)
         except NarwalError as err:
@@ -172,7 +176,18 @@ class NarwalCoordinator(DataUpdateCoordinator[NarwalData]):
             last_report=previous.last_report if previous else None,
             names=self.names,
             config=config,
+            plans=plans,
         )
+
+    async def _async_get_plans(
+        self, previous: tuple[CleanPlan, ...] | None
+    ) -> tuple[CleanPlan, ...] | None:
+        """Cleaning plans, read with the map; a robot without them keeps none."""
+        try:
+            return tuple(await self.robot.get_clean_plans())
+        except (NarwalCommandError, NarwalTimeoutError) as err:
+            _LOGGER.debug("Reading the cleaning plans failed: %s", err)
+            return previous
 
     async def _async_get_config(self, previous: RobotConfig | None) -> RobotConfig | None:
         """The robot's settings; a robot that does not answer /config/get

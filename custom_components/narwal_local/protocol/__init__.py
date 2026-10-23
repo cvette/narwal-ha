@@ -4,7 +4,14 @@ Reconstructed from the Narwal app 2.9.90 and verified against a real robot.
 Independent of Home Assistant so it can move to its own package later.
 """
 
-from .cleaning import CleanMode, CleanZoneType, build_clean_task_request, build_start_request
+from .cleaning import (
+    CleanMode,
+    CleanPlan,
+    CleanZoneType,
+    build_clean_task_request,
+    build_start_request,
+    build_zone_clean_request,
+)
 from .client import (
     TOPIC_CLEAN_REPORT,
     TOPIC_DISPLAY_MAP,
@@ -63,6 +70,7 @@ __all__ = [
     "CarpetStrategy",
     "ChargingStatus",
     "CleanMode",
+    "CleanPlan",
     "CleanReport",
     "CleanZoneType",
     "ConsumableInfo",
@@ -104,6 +112,7 @@ __all__ = [
     "add_room_labels",
     "build_clean_task_request",
     "build_start_request",
+    "build_zone_clean_request",
     "decode_clean_report",
     "decode_config",
     "decode_display_map",

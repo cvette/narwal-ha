@@ -1,4 +1,5 @@
-"""Buttons for the station's actions: empty the dust box, wash or dry the mop."""
+"""Buttons: the station's actions (empty the dust box, wash or dry the mop)
+and the cleaning plans saved in the Narwal app."""
 
 from __future__ import annotations
 
@@ -6,12 +7,12 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 
 from homeassistant.components.button import ButtonEntity, ButtonEntityDescription
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from .coordinator import NarwalConfigEntry, NarwalCoordinator
 from .entity import NarwalEntity
-from .protocol import NarwalRobot
+from .protocol import CleanPlan, NarwalRobot
 
 PARALLEL_UPDATES = 1
 
@@ -37,6 +38,19 @@ async def async_setup_entry(
     if coordinator.data.status.has_station:
         async_add_entities(NarwalStationButton(coordinator, d) for d in BUTTONS)
 
+    # Plans come and go in the app: add a button for each new one.
+    known: set[int] = set()
+
+    @callback
+    def _add_new_plans() -> None:
+        new = [p for p in coordinator.data.plans or () if p.id not in known]
+        known.update(p.id for p in new)
+        if new:
+            async_add_entities(NarwalPlanButton(coordinator, p) for p in new)
+
+    _add_new_plans()
+    entry.async_on_unload(coordinator.async_add_listener(_add_new_plans))
+
 
 class NarwalStationButton(NarwalEntity, ButtonEntity):
     """Starts a station action; the robot must be docked. Stop it with the
@@ -51,4 +65,30 @@ class NarwalStationButton(NarwalEntity, ButtonEntity):
 
     async def async_press(self) -> None:
         await self.coordinator.async_command(self.entity_description.press_fn(self.coordinator.robot))
+        await self.coordinator.async_request_refresh()
+
+
+class NarwalPlanButton(NarwalEntity, ButtonEntity):
+    """Starts a cleaning plan saved in the Narwal app. Unavailable once the
+    plan is deleted there."""
+
+    _attr_translation_key = "start_plan"
+
+    def __init__(self, coordinator: NarwalCoordinator, plan: CleanPlan) -> None:
+        super().__init__(coordinator, f"plan_{plan.id}")
+        self._plan_id = plan.id
+        self._attr_translation_placeholders = {"name": plan.name or str(plan.id)}
+
+    @property
+    def _plan(self) -> CleanPlan | None:
+        return next((p for p in self.coordinator.data.plans or () if p.id == self._plan_id), None)
+
+    @property
+    def available(self) -> bool:
+        return super().available and self._plan is not None
+
+    async def async_press(self) -> None:
+        if (plan := self._plan) is None:
+            return
+        await self.coordinator.async_command(self.coordinator.robot.start_plan(plan))
         await self.coordinator.async_request_refresh()

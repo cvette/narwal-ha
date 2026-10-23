@@ -204,6 +204,16 @@ class MapInfo:
         """Float border-frame point (dock, furniture, objects) -> display cell."""
         return CellPoint(x - self.border_left, y - self.border_bottom)
 
+    def world_to_border(self, x: float, y: float) -> tuple[int, int]:
+        """World point in metres -> integer border-frame cell (the frame zones
+        are sent in)."""
+        c = self.world_to_cell(Point(x, y))
+        return round(c.col) + self.border_left, round(c.row) + self.border_bottom
+
+    def world_rect_to_grid(self, x1: float, y1: float, x2: float, y2: float) -> tuple[int, int, int, int]:
+        """Rectangle between two world corners (metres) in border-frame cells."""
+        return (*self.world_to_border(x1, y1), *self.world_to_border(x2, y2))
+
     def room_at(self, x: float, y: float) -> int | None:
         """Room id under a border-frame point, or None outside any room."""
         c = self.border_point_to_cell(x, y)

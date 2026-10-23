@@ -1,25 +1,35 @@
-"""Actions: reset consumable reminders."""
+"""Actions: reset consumable reminders, clean zones."""
 
 from __future__ import annotations
 
 import voluptuous as vol
 
+from homeassistant.components.vacuum import DOMAIN as VACUUM_DOMAIN
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant, ServiceCall, callback
 from homeassistant.exceptions import ServiceValidationError
-from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers import config_validation as cv, service
 
 from .const import DOMAIN
 from .coordinator import NarwalConfigEntry
 from .protocol.enums import MAINTAIN_ITEM_NAMES, REPLACE_ITEM_NAMES
 
 SERVICE_RESET_CONSUMABLES = "reset_consumables"
+SERVICE_CLEAN_ZONE = "clean_zone"
 ATTR_CONFIG_ENTRY_ID = "config_entry_id"
 ATTR_ITEMS = "items"
 
 CONSUMABLE_ITEMS: list[str] = sorted(
     {*MAINTAIN_ITEM_NAMES.values(), *REPLACE_ITEM_NAMES.values()} - {"unspecified"}
 )
+
+MAX_ZONES = 10  # the app's limit for drawn areas
+
+ZONE = vol.All(list, vol.Length(min=4, max=4), [vol.Coerce(float)])
+CLEAN_ZONE_SCHEMA = {
+    vol.Required("zones"): vol.All(cv.ensure_list, [ZONE], vol.Length(min=1, max=MAX_ZONES)),
+    vol.Optional("repeats", default=1): vol.All(vol.Coerce(int), vol.Range(min=1, max=3)),
+}
 
 RESET_SCHEMA = vol.Schema(
     {
@@ -66,4 +76,12 @@ async def _async_reset_consumables(call: ServiceCall) -> None:
 def async_setup_services(hass: HomeAssistant) -> None:
     hass.services.async_register(
         DOMAIN, SERVICE_RESET_CONSUMABLES, _async_reset_consumables, schema=RESET_SCHEMA
+    )
+    service.async_register_platform_entity_service(
+        hass,
+        DOMAIN,
+        SERVICE_CLEAN_ZONE,
+        entity_domain=VACUUM_DOMAIN,
+        schema=CLEAN_ZONE_SCHEMA,
+        func="async_clean_zone",
     )

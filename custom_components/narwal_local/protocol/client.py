@@ -16,7 +16,19 @@ import uuid
 
 import aiohttp
 
-from .cleaning import URL_END, URL_LOCATE, URL_START_LEGACY, CleanMode, build_clean_task_request
+from .cleaning import (
+    URL_END,
+    URL_GET_PLANS,
+    URL_LOCATE,
+    URL_START_LEGACY,
+    URL_START_PLAN,
+    CleanMode,
+    CleanPlan,
+    build_clean_task_request,
+    build_start_plan_request,
+    build_zone_clean_request,
+    decode_clean_plans,
+)
 from .config import (
     URL_GET_CONFIG,
     URL_SET_CONFIG,
@@ -373,6 +385,39 @@ class NarwalRobot(NarwalClient):
             count=count,
         )
         await self._command(URL_START_LEGACY, request)
+
+    async def clean_zones(
+        self,
+        zones: Sequence[tuple[float, float, float, float]],
+        *,
+        mode: CleanMode = CleanMode.SWEEP_MOP,
+        fan: FanLevel | int | None = None,
+        humidity: MopHumidity | int | None = None,
+        count: int = 1,
+        map_info: MapInfo | None = None,
+    ) -> None:
+        """Clean rectangles given by two corners in world metres
+        (x1, y1, x2, y2), in this order. `map_info` saves a map download when
+        the caller already has the current map."""
+        status = await self.get_status()
+        if map_info is None or map_info.map_id != status.map_id:
+            map_info = await self.get_map()
+        request = build_zone_clean_request(
+            status.map_id,
+            [map_info.world_rect_to_grid(*zone) for zone in zones],
+            mode=mode,
+            fan=status.fan_level if fan is None else fan,
+            humidity=status.mop_humidity if humidity is None else humidity,
+            count=count,
+        )
+        await self._command(URL_START_LEGACY, request)
+
+    async def get_clean_plans(self) -> list[CleanPlan]:
+        """The cleaning plans saved in the Narwal app (all maps)."""
+        return decode_clean_plans((await self.call(URL_GET_PLANS)).payload)
+
+    async def start_plan(self, plan: CleanPlan) -> None:
+        await self._command(URL_START_PLAN, build_start_plan_request(plan.id, plan.map_id))
 
     async def stop(self) -> None:
         """End all running tasks (the app's "end cleaning")."""

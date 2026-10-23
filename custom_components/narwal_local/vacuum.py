@@ -18,6 +18,7 @@ from .const import DOMAIN
 from .coordinator import NarwalConfigEntry, NarwalCoordinator
 from .entity import NarwalEntity
 from .protocol import Activity, FanLevel
+from .protocol.map import Point
 
 PARALLEL_UPDATES = 1
 
@@ -104,6 +105,37 @@ class NarwalVacuum(NarwalEntity, StateVacuumEntity):
     async def async_clean_segments(self, segment_ids: list[str], **kwargs: Any) -> None:
         rooms = [int(segment_id) for segment_id in segment_ids]
         await self._start(rooms)
+
+    async def async_clean_zone(self, zones: list[list[float]], repeats: int = 1) -> None:
+        """Clean rectangles given as [x1, y1, x2, y2] in millimetres in the
+        map's frame (see the map image's calibration_points)."""
+        mi = self.coordinator.data.map
+        if mi is None:
+            raise ServiceValidationError(translation_domain=DOMAIN, translation_key="no_map")
+        rects = []
+        for zone in zones:
+            x1, y1, x2, y2 = (v / 1000 for v in zone)
+            a, b = mi.world_to_cell(Point(x1, y1)), mi.world_to_cell(Point(x2, y2))
+            outside = (
+                max(a.col, b.col) <= 0
+                or min(a.col, b.col) >= mi.width
+                or max(a.row, b.row) <= 0
+                or min(a.row, b.row) >= mi.height
+            )
+            gx1, gy1, gx2, gy2 = mi.world_rect_to_grid(x1, y1, x2, y2)
+            if outside or gx1 == gx2 or gy1 == gy2:
+                raise ServiceValidationError(
+                    translation_domain=DOMAIN,
+                    translation_key="zone_outside_map" if outside else "zone_too_small",
+                    translation_placeholders={"zone": str([round(v) for v in zone])},
+                )
+            rects.append((x1, y1, x2, y2))
+        await self.coordinator.async_command(
+            self.coordinator.robot.clean_zones(
+                rects, mode=self.coordinator.clean_mode, count=repeats, map_info=mi
+            )
+        )
+        await self.coordinator.async_request_refresh()
 
     async def async_start(self) -> None:
         """Resume a paused clean, otherwise clean every room."""

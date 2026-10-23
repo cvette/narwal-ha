@@ -60,6 +60,7 @@ Assistant `config/custom_components/` folder and restart.
 | `image.narwal_map` | the map: rooms with names, walls, doors, carpets, no-carpet areas, no-go zones, areas the robot cannot enter (darker), and icons for furniture, objects the camera recognised, dirty spots and the dock; during a clean also the robot and its path |
 | `event.narwal_clean_finished` | fired when the robot reports the end of a clean: event type `completed`, `stopped` (ended by someone) or `interrupted` (error, low battery, …); attributes `result`, `clean_type`, `area` (m²), `duration` (s), `progress` (%), `start`, `end` |
 | `switch.narwal_do_not_disturb`, `time.narwal_do_not_disturb_start`, `_end` | do-not-disturb and its window, in the robot's local time |
+| `button.narwal_start_plan_…` | one per cleaning plan saved in the Narwal app; starts it (appears within 15 minutes of saving a plan) |
 | `button.narwal_empty_dust_bin`, `_wash_mop`, `_dry_mop` | station actions; the robot must be in the station. Stop one with the vacuum's stop |
 | `number.narwal_volume` | voice volume, 0–100 % |
 | `switch.narwal_auto_empty`, `_quiet_auto_empty`, `_dust_bag_drying`, `_automatic_detergent`, `_hot_water_mop_wash`, `_child_lock` | station automation and child lock (only those your robot supports) |
@@ -129,6 +130,53 @@ action:
 Settings are read from the robot every 60 s, so changes made in the Narwal app
 show up in Home Assistant too. After a change from Home Assistant the settings
 are read back at once, so the entities show what the robot stored.
+
+## Zone cleaning
+
+`narwal_local.clean_zone` cleans rectangles, in the given order, with the
+current suction, mop humidity and `select.narwal_cleaning_mode` (verified on a
+robot). Each zone is
+`[x1, y1, x2, y2]`: two opposite corners in millimetres in the map's frame.
+
+```yaml
+action: narwal_local.clean_zone
+target:
+  entity_id: vacuum.narwal
+data:
+  zones:
+    - [1200, 3400, 2800, 5000]
+  repeats: 1
+```
+
+To find coordinates, use `image.narwal_map`'s attribute `calibration_points`:
+three corners of the image with their position on the map, the format map
+cards use to turn a drawn rectangle into these numbers. An example for the
+[Xiaomi Vacuum Map Card](https://github.com/PiotrMachowski/lovelace-xiaomi-vacuum-map-card)
+(not tested yet; check the card's documentation if it does not draw):
+
+```yaml
+type: custom:xiaomi-vacuum-map-card
+entity: vacuum.narwal
+map_source:
+  camera: image.narwal_map
+calibration_source:
+  entity: image.narwal_map
+  attribute: calibration_points
+map_modes:
+  - name: Clean zones
+    icon: mdi:selection-drag
+    selection_type: MANUAL_RECTANGLE
+    coordinates_rounding: true
+    max_selections: 10
+    repeats_type: EXTERNAL
+    max_repeats: 3
+    service_call_schema:
+      service: narwal_local.clean_zone
+      service_data:
+        entity_id: "[[entity_id]]"
+        zones: "[[selection]]"
+        repeats: "[[repeats]]"
+```
 
 ## Consumables
 
@@ -210,8 +258,8 @@ in the `codes` attribute.
 
 ## Roadmap
 
-Ideas, not promises: zone cleaning, starting cleaning plans saved in the
-Narwal app.
+Ideas, not promises: editing no-go zones from Home Assistant, more robot
+models confirmed by users.
 
 ## Development
 

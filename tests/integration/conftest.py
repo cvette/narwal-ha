@@ -73,6 +73,7 @@ class FakeRobot:
         self.map_fetches = 0
         self.config = decode_config(config_payload())
         self.config_supported = True
+        self.plans: list = []
 
     def __call__(self, host: str, port: int = 9002, **_: object) -> FakeRobot:
         """Acts as the NarwalRobot constructor."""
@@ -123,6 +124,10 @@ class FakeRobot:
         self._ensure()
         self.map_fetches += 1
         return self.map
+
+    async def get_clean_plans(self):
+        self._ensure()
+        return list(self.plans)
 
     async def get_config(self):
         self._ensure()
@@ -177,6 +182,12 @@ class FakeRobot:
 
     async def start_clean(self, rooms=None, *, mode=None, **_):
         await self._command("start_clean", list(rooms) if rooms else None, mode)
+
+    async def clean_zones(self, zones, *, mode=None, count=1, map_info=None, **_):
+        await self._command("clean_zones", [tuple(round(v, 3) for v in z) for z in zones], mode, count)
+
+    async def start_plan(self, plan):
+        await self._command("start_plan", plan.id)
 
     async def stop(self):
         await self._command("stop")

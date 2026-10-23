@@ -20,10 +20,11 @@ The easy-clean ("ax3") request:
 from __future__ import annotations
 
 from collections.abc import Sequence
+from dataclasses import dataclass
 from enum import IntEnum
 
 from .enums import FanLevel, MopHumidity
-from .pb import Writer
+from .pb import WIRE_LEN, WIRE_VARINT, Writer, parse
 
 URL_START = "/clean/easy_clean/start"
 URL_END = "/task/force_end"
@@ -177,3 +178,120 @@ def build_clean_task_request(
         task.message(2, item)
     task.varint(5, int(task_kind))
     return bytes(Writer().message(1, task))
+
+
+# --- zones -------------------------------------------------------------------
+#
+# The app's map editor sends a drawn rectangle as a CleanItem whose zone is
+#
+#   ZoneOption { 1 zoneType ZONE, 2 zoneId (the area's number),
+#                3 selectionBounds[], 4 cleaningBounds[] }
+#   GridPoint  { 1 x, 2 y }
+#
+# with both bounds holding the rectangle's four corners as integer cells in
+# the map's border frame (the frame of doors and carpets). The task type is
+# the "general" one for the clean mode, as the app sends it; the robot accepts
+# zones in a CUSTOM task but does not start them.
+
+GridRect = tuple[int, int, int, int]  # x1, y1, x2, y2 in border-frame cells
+
+GENERAL_TASKS: dict[CleanMode, TaskKind] = {
+    CleanMode.SWEEP: TaskKind.GENERAL_SWEEP,
+    CleanMode.MOP: TaskKind.GENERAL_MOP,
+    CleanMode.SWEEP_MOP: TaskKind.GENERAL_SWEEP_MOP,
+    CleanMode.SWEEP_THEN_MOP: TaskKind.GENERAL_SWEEP_THEN_MOP,
+}
+
+
+def _corners(rect: GridRect) -> list[tuple[int, int]]:
+    x1, y1, x2, y2 = rect
+    left, right = sorted((x1, x2))
+    bottom, top = sorted((y1, y2))
+    if left == right or bottom == top:
+        raise ValueError(f"zone {rect} has no area")
+    return [(left, bottom), (right, bottom), (right, top), (left, top)]
+
+
+def _zone_option(zone_id: int, rect: GridRect) -> Writer:
+    zone = Writer().varint(1, int(ZoneKind.ZONE)).varint(2, zone_id)
+    corners = _corners(rect)
+    for field_num in (3, 4):
+        for x, y in corners:
+            zone.message(field_num, Writer().varint(1, x, force=True).varint(2, y, force=True))
+    return zone
+
+
+def build_zone_clean_request(
+    map_id: int,
+    zones: Sequence[GridRect],
+    *,
+    mode: CleanMode = CleanMode.SWEEP_MOP,
+    fan: FanLevel | int = FanLevel.NORMAL,
+    humidity: MopHumidity | int = MopHumidity.NORMAL,
+    count: int = 1,
+) -> bytes:
+    """StartClean_Request for rectangular zones, cleaned in the given order."""
+    if not zones:
+        raise ValueError("no zones given")
+    if mode not in GENERAL_TASKS:
+        raise ValueError(f"zones cannot be cleaned in mode {mode!r}")
+    task = Writer().varint(1, map_id)
+    for order, rect in enumerate(zones, start=1):
+        item = Writer().message(1, _zone_option(order, rect))
+        item.message(2, _clean_param(mode, fan, humidity, count)).varint(3, order)
+        task.message(2, item)
+    task.varint(5, int(GENERAL_TASKS[mode]))
+    return bytes(Writer().message(1, task))
+
+
+# --- cleaning plans ------------------------------------------------------------
+#
+# Plans are the room selections saved in the app. /clean/plan/get answers
+# GetCleanPlans_Response { 1 result, 2 cleanPlans[] } with
+#
+#   CleanPlan { 1 id, 2 mapId, 3 cleanMode, 4 isCustomPlan, 5 customName,
+#               6 shownInStation, 7 performTimes, 8 order, … }
+#
+# and /clean/plan/start takes StartWithPlan_Request { 1 planId, 2 mapId }.
+
+URL_GET_PLANS = "/clean/plan/get"
+URL_START_PLAN = "/clean/plan/start"
+
+
+@dataclass(frozen=True, slots=True)
+class CleanPlan:
+    id: int
+    map_id: int = 0
+    mode: CleanMode | int = 0
+    custom: bool = False
+    name: str = ""
+    order: int = 0
+
+
+def decode_clean_plans(payload: bytes) -> list[CleanPlan]:
+    plans = []
+    for f in parse(payload):
+        if f.num != 2 or f.wtype != WIRE_LEN:
+            continue
+        values: dict[int, int | str] = {}
+        for g in parse(f.value):
+            if g.wtype == WIRE_VARINT:
+                values[g.num] = g.int
+            elif g.num == 5 and g.wtype == WIRE_LEN:
+                values[5] = g.value.decode("utf-8", "replace")
+        mode = values.get(3, 0)
+        plans.append(
+            CleanPlan(
+                id=int(values.get(1, 0)),
+                map_id=int(values.get(2, 0)),
+                mode=CleanMode(mode) if mode in CleanMode._value2member_map_ else mode,
+                custom=bool(values.get(4)),
+                name=str(values.get(5, "")),
+                order=int(values.get(8, 0)),
+            )
+        )
+    return sorted(plans, key=lambda p: (p.order, p.id))
+
+
+def build_start_plan_request(plan_id: int, map_id: int) -> bytes:
+    return bytes(Writer().varint(1, plan_id, force=True).varint(2, map_id))

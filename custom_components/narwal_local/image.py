@@ -17,6 +17,7 @@ from .coordinator import NarwalConfigEntry, NarwalCoordinator
 from .entity import NarwalEntity
 from .map_objects import dirt_list, dock_room, furniture_list, obstacle_list
 from .protocol import Activity, MapInfo, MapRenderer, Pose
+from .protocol.render import Viewport, content_viewport
 
 PARALLEL_UPDATES = 0
 
@@ -33,6 +34,23 @@ def render_map(
 ) -> bytes:
     """One-off render (diagnostics, scripts); the entity keeps a MapRenderer."""
     return MapRenderer(mi, MAP_SCALE).frame(robot, path)
+
+
+def calibration_points(mi: MapInfo, vp: Viewport) -> list[dict[str, dict[str, int]]]:
+    """Three image corners with their world position in millimetres, the
+    `calibration_points` map cards use to turn a drawn zone into the
+    coordinates of narwal_local.clean_zone."""
+    points = []
+    for col, row in ((vp.col0, vp.row0), (vp.col1, vp.row0), (vp.col0, vp.row1)):
+        world = mi.cell_to_world(col, row)
+        x, y = vp.corner(col, row)
+        points.append(
+            {
+                "vacuum": {"x": round(world.x * 1000), "y": round(world.y * 1000)},
+                "map": {"x": round(x), "y": round(y)},
+            }
+        )
+    return points
 
 
 async def async_setup_entry(
@@ -66,6 +84,7 @@ class NarwalMapImage(NarwalEntity, ImageEntity):
         self._last_live_bump: datetime | None = None
         self._pending_bump: Callable[[], None] | None = None
         self._robot_visible = self._overlay()[0] is not None
+        self._calibration: tuple[tuple | None, list[dict[str, dict[str, int]]]] = (None, [])
         if self._map_key is not None:
             self._attr_image_last_updated = dt_util.utcnow()
 
@@ -170,4 +189,13 @@ class NarwalMapImage(NarwalEntity, ImageEntity):
             "furniture": furniture_list(mi, names),
             "obstacles": obstacle_list(mi, names),
             "dirt": dirt_list(mi, names),
+            "calibration_points": self._calibration_points(mi),
         }
+
+    def _calibration_points(self, mi: MapInfo) -> list[dict[str, dict[str, int]]]:
+        """Cached per map version: finding the viewport scans the grid."""
+        key, points = self._calibration
+        if key != self._map_key or not points:
+            points = calibration_points(mi, content_viewport(mi, MAP_SCALE)) if mi.robot_has_map else []
+            self._calibration = (self._map_key, points)
+        return points

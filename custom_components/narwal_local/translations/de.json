@@ -65,6 +65,9 @@
       },
       "dry_mop": {
         "name": "Mopp trocknen"
+      },
+      "start_plan": {
+        "name": "Plan {name} starten"
       }
     },
     "event": {
@@ -429,6 +432,15 @@
     },
     "not_due": {
       "message": "{item} ist nicht fällig, es gibt keine Erinnerung zum Löschen."
+    },
+    "no_map": {
+      "message": "Der Roboter hat noch keine Karte."
+    },
+    "zone_outside_map": {
+      "message": "Die Zone {zone} liegt außerhalb der Karte."
+    },
+    "zone_too_small": {
+      "message": "Die Zone {zone} ist zu klein; die Ecken brauchen unterschiedliche x- und y-Werte."
     }
   },
   "selector": {
@@ -562,6 +574,20 @@
     }
   },
   "services": {
+    "clean_zone": {
+      "name": "Zonen reinigen",
+      "description": "Reinigt Rechtecke auf der Karte in der angegebenen Reihenfolge, mit der aktuellen Saugstärke, Mopp-Feuchte und dem Reinigungsmodus.",
+      "fields": {
+        "zones": {
+          "name": "Zonen",
+          "description": "Liste von Rechtecken [x1, y1, x2, y2] in Millimetern, je zwei gegenüberliegende Ecken, im Koordinatensystem der calibration_points des Kartenbilds."
+        },
+        "repeats": {
+          "name": "Durchgänge",
+          "description": "Wie oft jede Zone gereinigt wird (1 bis 3)."
+        }
+      }
+    },
     "reset_consumables": {
       "name": "Verbrauchsteil-Erinnerungen zurücksetzen",
       "description": "Teilt dem Roboter mit, dass Teile gereinigt oder ersetzt wurden, und löscht damit ihre Erinnerungen. Ohne Angabe von Teilen werden alle fälligen Erinnerungen gelöscht. Die Lebensdauer in der Narwal-App liegt in Narwals Cloud und ändert sich nicht.",

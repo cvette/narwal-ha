@@ -65,6 +65,9 @@
       },
       "dry_mop": {
         "name": "Dry mop"
+      },
+      "start_plan": {
+        "name": "Start plan {name}"
       }
     },
     "event": {
@@ -429,6 +432,15 @@
     },
     "not_due": {
       "message": "{item} is not due, so there is no reminder to clear."
+    },
+    "no_map": {
+      "message": "The robot has no map yet."
+    },
+    "zone_outside_map": {
+      "message": "Zone {zone} lies outside the map."
+    },
+    "zone_too_small": {
+      "message": "Zone {zone} is too small; corners need different x and y values."
     }
   },
   "selector": {
@@ -562,6 +574,20 @@
     }
   },
   "services": {
+    "clean_zone": {
+      "name": "Clean zones",
+      "description": "Cleans rectangles on the map, in the given order, with the current suction, mop humidity and cleaning mode.",
+      "fields": {
+        "zones": {
+          "name": "Zones",
+          "description": "List of rectangles [x1, y1, x2, y2] in millimetres, two opposite corners each, in the frame of the map image's calibration_points."
+        },
+        "repeats": {
+          "name": "Repeats",
+          "description": "How often each zone is cleaned (1 to 3)."
+        }
+      }
+    },
     "reset_consumables": {
       "name": "Reset consumable reminders",
       "description": "Tells the robot that parts were cleaned or replaced, which clears their reminders. Without parts, all due reminders are cleared. The lifetime shown in the Narwal app is kept in Narwal's cloud and does not change.",

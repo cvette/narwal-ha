@@ -7,6 +7,11 @@ robot.
 
 ## Unreleased
 
+- Zone cleaning, verified: action `narwal_local.clean_zone` cleans rectangles
+  given in millimetres; `image.narwal_map` gains `calibration_points`, so map cards
+  can turn a drawn rectangle into a zone.
+- A start button for each cleaning plan saved in the Narwal app (not yet
+  tried on a robot).
 - The icon at the top of the README, and a social preview card for links to
   the repository (`assets/logo/social-preview.png`).
 
