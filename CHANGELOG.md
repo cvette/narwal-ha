@@ -7,6 +7,9 @@ robot.
 
 ## Unreleased
 
+- `select.narwal_map`: switch between the robot's maps (floors), read
+  with `/map/get_all_reduced_maps` (verified read-only on a robot with one
+  map; switching not yet tried).
 - More station buttons: wash and dry mop, dry the station's dust bag (and
   the robot's own bag where it has one).
 - `button.narwal_resume_interrupted_clean`: continue an interrupted clean.

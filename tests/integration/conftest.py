@@ -21,6 +21,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry  # noqa
 
 from custom_components.narwal_local.const import DOMAIN  # noqa: E402
 from custom_components.narwal_local.protocol import (  # noqa: E402
+    MapSummary,
     BatteryInfo,
     DisturbMode,
     Message,
@@ -80,6 +81,7 @@ class FakeRobot:
         self.config_supported = True
         self.plans: list = []
         self.continue_task_info = None
+        self.maps = [MapSummary(1, "", True, False, ("Living room", "Kitchen", "Hallway", "Bedroom"))]
         self.dry_remain = 0
         self.battery = BatteryInfo(6063, 80, 98, 27.3, 16.393, -0.126, 100, None)
 
@@ -208,6 +210,13 @@ class FakeRobot:
     async def get_battery_info(self):
         self._ensure()
         return self.battery
+
+    async def get_maps(self):
+        self._ensure()
+        return list(self.maps)
+
+    async def switch_map(self, map_id):
+        await self._command("switch_map", map_id)
 
     async def get_continue_task(self):
         self._ensure()

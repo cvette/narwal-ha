@@ -54,6 +54,9 @@
       },
       "ambient_light": {
         "default": "mdi:lightbulb-night"
+      },
+      "map": {
+        "default": "mdi:layers"
       }
     },
     "sensor": {

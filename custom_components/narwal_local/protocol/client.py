@@ -42,6 +42,7 @@ from .enums import FanLevel, FirmwareStatus, MopHumidity, ServiceResult
 from .frame import SOURCE_APP, FrameError, Header, decode_frame, encode_frame, topic_of
 from .map import MapInfo, decode_get_map_response
 from .map_edit import URL_MAP_OPERATION, NoGoZone, build_no_go_request, decode_map_edit_result
+from .maps import URL_ALL_MAPS, URL_SWITCH_MAP, MapSummary, build_switch_map_request, decode_all_maps
 from .station import (
     URL_AMBIENT_LIGHT,
     URL_CONTINUE_TASK,
@@ -446,6 +447,14 @@ class NarwalRobot(NarwalClient):
     async def get_battery_info(self) -> BatteryInfo:
         """Battery health: cycles, capacity, temperature, voltage, current."""
         return decode_battery_info((await self.call(URL_BATTERY_INFO)).payload)
+
+    async def get_maps(self) -> list[MapSummary]:
+        """Every map the robot keeps (floors), with names and rooms."""
+        return decode_all_maps((await self.call(URL_ALL_MAPS)).payload)
+
+    async def switch_map(self, map_id: int) -> None:
+        """Make another map the current one (the robot then works on it)."""
+        await self._command(URL_SWITCH_MAP, build_switch_map_request(map_id))
 
     async def get_continue_task(self) -> ContinueTask | None:
         """The interrupted clean the robot can resume, if any."""

@@ -43,6 +43,7 @@ from .protocol import (
     FeatureList,
     FirmwareVersion,
     MapInfo,
+    MapSummary,
     Message,
     NarwalCommandError,
     NarwalError,
@@ -77,6 +78,7 @@ class NarwalData:
     names: ObjectNames = field(default_factory=ObjectNames)
     config: RobotConfig | None = None
     plans: tuple[CleanPlan, ...] | None = None  # saved in the Narwal app
+    maps: tuple[MapSummary, ...] | None = None  # all maps (floors)
     battery: BatteryInfo | None = None  # health, cycles, temperature, …
     continue_task: ContinueTask | None = None  # an interrupted clean to resume
     dry_mop_remain: int | None = None  # seconds of mop drying left
@@ -158,6 +160,7 @@ class NarwalCoordinator(DataUpdateCoordinator[NarwalData]):
             consumables = previous.consumables if previous else None
             map_info = previous.map if previous else None
             plans = previous.plans if previous else None
+            maps = previous.maps if previous else None
             now = dt_util.utcnow()
             if consumables is None or now >= self._consumables_due:
                 consumables = await self.robot.get_consumables()
@@ -165,6 +168,7 @@ class NarwalCoordinator(DataUpdateCoordinator[NarwalData]):
             if map_info is None or now >= self._map_due or map_info.map_id != status.map_id:
                 map_info = await self.robot.get_map()
                 plans = await self._async_get_plans(plans)
+                maps = await self._async_get_maps(maps)
                 self._map_due = now + MAP_INTERVAL
             config = await self._async_get_config(previous.config if previous else None)
             battery = await self._async_get_battery(previous.battery if previous else None)
@@ -185,6 +189,7 @@ class NarwalCoordinator(DataUpdateCoordinator[NarwalData]):
             names=self.names,
             config=config,
             plans=plans,
+            maps=maps,
             battery=battery,
             continue_task=continue_task,
             dry_mop_remain=dry_mop_remain,
@@ -205,6 +210,22 @@ class NarwalCoordinator(DataUpdateCoordinator[NarwalData]):
         except (NarwalCommandError, NarwalTimeoutError) as err:
             _LOGGER.debug("Reading the station extras failed: %s", err)
         return continue_task, dry
+
+    async def _async_get_maps(self, previous: tuple[MapSummary, ...] | None) -> tuple[MapSummary, ...] | None:
+        """All maps, read with the map, for robots that keep several."""
+        if not self.static.features.supports("supportMultiMap"):
+            return None
+        try:
+            return tuple(m for m in await self.robot.get_maps() if not m.temporary)
+        except (NarwalCommandError, NarwalTimeoutError) as err:
+            _LOGGER.debug("Reading the maps failed: %s", err)
+            return previous
+
+    async def async_switch_map(self, map_id: int) -> None:
+        """Switch to another map and read it right away."""
+        await self.async_command(self.robot.switch_map(map_id))
+        self._map_due = dt_util.utcnow()
+        await self.async_request_refresh()
 
     async def _async_get_battery(self, previous: BatteryInfo | None) -> BatteryInfo | None:
         """Battery health, for robots that report it."""

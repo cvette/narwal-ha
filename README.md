@@ -66,6 +66,7 @@ Assistant `config/custom_components/` folder and restart.
 | `button.narwal_empty_dust_bin`, `_wash_mop`, `_dry_mop`, `_wash_and_dry_mop`, `_dry_station_dust_bag` (`_dry_dust_bag` for robots with their own bag) | station actions; the robot must be in the station. Stop one with the vacuum's stop |
 | `button.narwal_resume_interrupted_clean` | continues a clean that was interrupted (to recharge, or stopped); unavailable while there is nothing to resume |
 | `sensor.narwal_mop_drying_time_left` | remaining mop drying time, 0 when the mop is not drying |
+| `select.narwal_map` | the current map, for robots with several (one per floor): choosing one switches the robot to it; unnamed maps show as *Map 1*, *Map 2*, … |
 | `select.narwal_ambient_light` | the station's ambient light: off, night light, warm, purple (as far as the station has them) |
 | `number.narwal_volume` | voice volume, 0–100 % |
 | `switch.narwal_auto_empty`, `_quiet_auto_empty`, `_dust_bag_drying`, `_automatic_detergent`, `_hot_water_mop_wash`, `_child_lock` | station automation and child lock (only those your robot supports) |

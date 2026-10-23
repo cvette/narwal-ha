@@ -12,7 +12,7 @@ from homeassistant.helpers.restore_state import RestoreEntity
 
 from .coordinator import NarwalConfigEntry, NarwalCoordinator
 from .entity import NarwalEntity
-from .protocol import AmbientLight, CleanMode, CornerCleaning, MopHumidity, Setting
+from .protocol import AmbientLight, CleanMode, CornerCleaning, MapSummary, MopHumidity, Setting
 from .protocol.config import SETTINGS
 
 PARALLEL_UPDATES = 1
@@ -44,6 +44,8 @@ async def async_setup_entry(
         )
     if coordinator.static.features.other.get("maxAmbientLightCtrlType", 0) > 0:
         entities.append(NarwalAmbientLightSelect(coordinator))
+    if coordinator.data.maps is not None:
+        entities.append(NarwalMapSelect(coordinator))
     async_add_entities(entities)
 
 
@@ -186,3 +188,39 @@ class NarwalAmbientLightSelect(NarwalEntity, SelectEntity):
             self.coordinator.robot.set_ambient_light(AmbientLight[option.upper()])
         )
         await self.coordinator.async_request_refresh()
+
+
+def map_label(summary: MapSummary) -> str:
+    """How a map is offered: its name from the app, or its number."""
+    return summary.name or f"Map {summary.id}"
+
+
+class NarwalMapSelect(NarwalEntity, SelectEntity):
+    """The current map, for robots that keep several (one per floor).
+    Choosing another one switches the robot to it."""
+
+    _attr_translation_key = "map"
+
+    def __init__(self, coordinator: NarwalCoordinator) -> None:
+        super().__init__(coordinator, "map")
+
+    def _labels(self) -> dict[str, int]:
+        labels: dict[str, int] = {}
+        for summary in self.coordinator.data.maps or ():
+            label = map_label(summary)
+            if label in labels:  # two maps with the same name
+                label = f"{label} ({summary.id})"
+            labels[label] = summary.id
+        return labels
+
+    @property
+    def options(self) -> list[str]:
+        return list(self._labels())
+
+    @property
+    def current_option(self) -> str | None:
+        current = self.coordinator.data.status.map_id
+        return next((label for label, map_id in self._labels().items() if map_id == current), None)
+
+    async def async_select_option(self, option: str) -> None:
+        await self.coordinator.async_switch_map(self._labels()[option])
