@@ -12,12 +12,20 @@ from typing import Any
 
 import voluptuous as vol
 
-from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
+from homeassistant.config_entries import (
+    ConfigEntry,
+    ConfigFlow,
+    ConfigFlowResult,
+    OptionsFlowWithReload,
+)
 from homeassistant.const import CONF_HOST, CONF_PORT
+from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.selector import NumberSelector, NumberSelectorConfig, NumberSelectorMode
 from homeassistant.helpers.service_info.zeroconf import ZeroconfServiceInfo
 
 from .const import DEFAULT_PORT, DOMAIN
+from .floorplan import CONF_FLOORPLAN, Affine
 from .protocol import DeviceInfo, NarwalError, NarwalRobot
 
 _LOGGER = logging.getLogger(__name__)
@@ -42,6 +50,11 @@ class NarwalConfigFlow(ConfigFlow, domain=DOMAIN):
 
     def __init__(self) -> None:
         self._discovered: dict[str, Any] = {}
+
+    @staticmethod
+    @callback
+    def async_get_options_flow(config_entry: ConfigEntry) -> NarwalOptionsFlow:
+        return NarwalOptionsFlow()
 
     async def _validate(self, user_input: dict[str, Any]) -> tuple[DeviceInfo | None, dict[str, str]]:
         robot = NarwalRobot(
@@ -117,5 +130,42 @@ class NarwalConfigFlow(ConfigFlow, domain=DOMAIN):
         return self.async_show_form(
             step_id="reconfigure",
             data_schema=_schema(entry.data[CONF_HOST], entry.data.get(CONF_PORT, DEFAULT_PORT)),
+            errors=errors,
+        )
+
+
+# Floor plan calibration: three reference points, each a map position in
+# metres and the same spot on the floor plan.
+POINT_FIELDS = ("map_x", "map_y", "plan_x", "plan_y")
+FIELDS = [f"p{i}_{name}" for i in (1, 2, 3) for name in POINT_FIELDS]
+NUMBER = NumberSelector(NumberSelectorConfig(mode=NumberSelectorMode.BOX, step="any"))
+
+
+class NarwalOptionsFlow(OptionsFlowWithReload):
+    """Floor plan calibration; leave every field empty to turn it off."""
+
+    async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            values = [user_input.get(name) for name in FIELDS]
+            if all(v is None for v in values):
+                return self.async_create_entry(data={})
+            if any(v is None for v in values):
+                errors["base"] = "incomplete_points"
+            else:
+                pairs = [values[i : i + 4] for i in range(0, 12, 4)]
+                try:
+                    Affine.from_points(pairs)
+                except ValueError:
+                    errors["base"] = "points_on_a_line"
+                else:
+                    return self.async_create_entry(data={CONF_FLOORPLAN: pairs})
+        current = user_input
+        if current is None and (pairs := self.config_entry.options.get(CONF_FLOORPLAN)):
+            current = dict(zip(FIELDS, (v for p in pairs for v in p), strict=True))
+        schema = vol.Schema({vol.Optional(name): NUMBER for name in FIELDS})
+        return self.async_show_form(
+            step_id="init",
+            data_schema=self.add_suggested_values_to_schema(schema, current or {}),
             errors=errors,
         )

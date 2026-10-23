@@ -41,6 +41,32 @@
     },
     "flow_title": "Narwal ({host})"
   },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Floor plan",
+        "description": "Place the robot on your own floor plan: enter three spots you can find on both, each as a map position in metres and the same spot on your floor plan (for example in percent of the image). Room corners work well; the map image lists each room's bounds in metres. Leave everything empty to turn this off.",
+        "data": {
+          "p1_map_x": "Point 1: map x (m)",
+          "p1_map_y": "Point 1: map y (m)",
+          "p1_plan_x": "Point 1: floor plan x",
+          "p1_plan_y": "Point 1: floor plan y",
+          "p2_map_x": "Point 2: map x (m)",
+          "p2_map_y": "Point 2: map y (m)",
+          "p2_plan_x": "Point 2: floor plan x",
+          "p2_plan_y": "Point 2: floor plan y",
+          "p3_map_x": "Point 3: map x (m)",
+          "p3_map_y": "Point 3: map y (m)",
+          "p3_plan_x": "Point 3: floor plan x",
+          "p3_plan_y": "Point 3: floor plan y"
+        }
+      }
+    },
+    "error": {
+      "incomplete_points": "Fill in all twelve fields, or leave all of them empty.",
+      "points_on_a_line": "The three map points lie on one line; pick spots that form a triangle."
+    }
+  },
   "entity": {
     "binary_sensor": {
       "maintenance_needed": {
@@ -346,6 +372,32 @@
           "not_installed": "Missing",
           "replace_suggested": "Replace",
           "abnormal": "Fault"
+        }
+      },
+      "position": {
+        "name": "Position",
+        "state_attributes": {
+          "x": {
+            "name": "X (m)"
+          },
+          "y": {
+            "name": "Y (m)"
+          },
+          "heading": {
+            "name": "Heading"
+          },
+          "room": {
+            "name": "Room"
+          },
+          "floorplan_x": {
+            "name": "Floor plan x"
+          },
+          "floorplan_y": {
+            "name": "Floor plan y"
+          },
+          "floorplan_heading": {
+            "name": "Floor plan heading"
+          }
         }
       }
     },

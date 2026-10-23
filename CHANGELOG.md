@@ -12,6 +12,12 @@ robot.
   can turn a drawn rectangle into a zone.
 - A start button for each cleaning plan saved in the Narwal app (not yet
   tried on a robot).
+- `sensor.narwal_position`: distance from the dock, with the position in
+  metres, heading and room as attributes; updates at most once a second
+  while the robot moves.
+- Floor plan calibration in the integration's options: three reference
+  points turn the position into `floorplan_x` / `floorplan_y` on your own
+  floor plan. The map image lists each room's bounds in metres.
 - The icon at the top of the README, and a social preview card for links to
   the repository (`assets/logo/social-preview.png`).
 

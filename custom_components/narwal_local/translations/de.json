@@ -41,6 +41,32 @@
     },
     "flow_title": "Narwal ({host})"
   },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Grundriss",
+        "description": "Den Roboter auf deinem eigenen Grundriss zeigen: drei Stellen eingeben, die auf beiden zu finden sind, jeweils als Kartenposition in Metern und dieselbe Stelle auf deinem Grundriss (zum Beispiel in Prozent des Bildes). Raumecken eignen sich gut; das Kartenbild nennt die Grenzen jedes Raums in Metern. Alles leer lassen, um es auszuschalten.",
+        "data": {
+          "p1_map_x": "Punkt 1: Karte x (m)",
+          "p1_map_y": "Punkt 1: Karte y (m)",
+          "p1_plan_x": "Punkt 1: Grundriss x",
+          "p1_plan_y": "Punkt 1: Grundriss y",
+          "p2_map_x": "Punkt 2: Karte x (m)",
+          "p2_map_y": "Punkt 2: Karte y (m)",
+          "p2_plan_x": "Punkt 2: Grundriss x",
+          "p2_plan_y": "Punkt 2: Grundriss y",
+          "p3_map_x": "Punkt 3: Karte x (m)",
+          "p3_map_y": "Punkt 3: Karte y (m)",
+          "p3_plan_x": "Punkt 3: Grundriss x",
+          "p3_plan_y": "Punkt 3: Grundriss y"
+        }
+      }
+    },
+    "error": {
+      "incomplete_points": "Alle zwölf Felder ausfüllen oder alle leer lassen.",
+      "points_on_a_line": "Die drei Kartenpunkte liegen auf einer Linie; wähle Stellen, die ein Dreieck bilden."
+    }
+  },
   "entity": {
     "binary_sensor": {
       "maintenance_needed": {
@@ -346,6 +372,32 @@
           "not_installed": "Fehlt",
           "replace_suggested": "Wechseln",
           "abnormal": "Fehler"
+        }
+      },
+      "position": {
+        "name": "Position",
+        "state_attributes": {
+          "x": {
+            "name": "X (m)"
+          },
+          "y": {
+            "name": "Y (m)"
+          },
+          "heading": {
+            "name": "Ausrichtung"
+          },
+          "room": {
+            "name": "Raum"
+          },
+          "floorplan_x": {
+            "name": "Grundriss x"
+          },
+          "floorplan_y": {
+            "name": "Grundriss y"
+          },
+          "floorplan_heading": {
+            "name": "Ausrichtung auf dem Grundriss"
+          }
         }
       }
     },

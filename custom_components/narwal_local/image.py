@@ -85,6 +85,7 @@ class NarwalMapImage(NarwalEntity, ImageEntity):
         self._pending_bump: Callable[[], None] | None = None
         self._robot_visible = self._overlay()[0] is not None
         self._calibration: tuple[tuple | None, list[dict[str, dict[str, int]]]] = (None, [])
+        self._bounds: tuple[tuple | None, dict[int, tuple[float, float, float, float]]] = (None, {})
         if self._map_key is not None:
             self._attr_image_last_updated = dt_util.utcnow()
 
@@ -184,13 +185,28 @@ class NarwalMapImage(NarwalEntity, ImageEntity):
         names = self.coordinator.data.names
         return {
             "map_id": mi.map_id,
-            "rooms": [{"id": r.id, "name": r.name} for r in mi.rooms],
+            "rooms": self._rooms(mi),
             "dock_room": dock_room(mi),
             "furniture": furniture_list(mi, names),
             "obstacles": obstacle_list(mi, names),
             "dirt": dirt_list(mi, names),
             "calibration_points": self._calibration_points(mi),
         }
+
+    def _rooms(self, mi: MapInfo) -> list[dict[str, Any]]:
+        """Rooms with their bounding box in metres (cached per map version),
+        handy reference points for a floor plan calibration."""
+        key, bounds = self._bounds
+        if key != self._map_key or (not bounds and mi.rooms):
+            bounds = mi.room_bounds()
+            self._bounds = (self._map_key, bounds)
+        rooms = []
+        for r in mi.rooms:
+            room: dict[str, Any] = {"id": r.id, "name": r.name}
+            if (box := bounds.get(r.id)) is not None:
+                room["bounds"] = [round(v, 2) for v in box]
+            rooms.append(room)
+        return rooms
 
     def _calibration_points(self, mi: MapInfo) -> list[dict[str, dict[str, int]]]:
         """Cached per map version: finding the viewport scans the grid."""

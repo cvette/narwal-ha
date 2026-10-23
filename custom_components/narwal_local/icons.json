@@ -41,6 +41,11 @@
         "default": "mdi:sign-direction"
       }
     },
+    "sensor": {
+      "position": {
+        "default": "mdi:map-marker-radius"
+      }
+    },
     "switch": {
       "do_not_disturb": {
         "default": "mdi:minus-circle-outline",

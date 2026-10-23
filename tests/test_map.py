@@ -242,3 +242,13 @@ def test_empty_response() -> None:
     mi = decode_get_map_response(bytes(Writer().varint(1, 1)))
     assert mi.result is ServiceResult.PERFORM_SUCCESS
     assert not mi.robot_has_map and mi.room_grid() == b""
+
+
+def test_room_bounds_in_metres(fixture_bin) -> None:
+    """Outer cell edges per room; the synthetic map has 50 mm cells from (-3, -2.5)."""
+    mi = decode_get_map_response(fixture_bin("get_map"))
+    bounds = mi.room_bounds()
+    assert set(bounds) == {r.id for r in mi.rooms}
+    assert [round(v, 2) for v in bounds[1]] == [-2.5, -2.0, 0.05, 0.05]
+    x0, y0, x1, y1 = bounds[2]
+    assert x0 < x1 and y0 < y1

@@ -6,6 +6,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date, datetime
 from decimal import Decimal
+import math
 from typing import Any
 
 from homeassistant.components.sensor import (
@@ -15,7 +16,7 @@ from homeassistant.components.sensor import (
     SensorEntityDescription,
     SensorStateClass,
 )
-from homeassistant.const import PERCENTAGE, EntityCategory, UnitOfArea, UnitOfTime
+from homeassistant.const import PERCENTAGE, EntityCategory, UnitOfArea, UnitOfLength, UnitOfTime
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.typing import StateType
@@ -23,10 +24,13 @@ from homeassistant.util import dt as dt_util
 
 from .coordinator import NarwalConfigEntry, NarwalCoordinator, NarwalData
 from .entity import NarwalEntity
+from .floorplan import affine_from_options
 from .map_objects import obstacle_list, obstacle_summary
 from .protocol import (
     ERROR_CATEGORIES,
+    Activity,
     ChargingStatus,
+    Pose,
     TaskType,
     error_category,
     error_hex,
@@ -229,6 +233,7 @@ async def async_setup_entry(
     ]
     entities += [NarwalRestoreSensor(coordinator, d) for d in LAST_CLEAN_SENSORS]
     entities.append(NarwalCurrentRoomSensor(coordinator))
+    entities.append(NarwalPositionSensor(coordinator))
     async_add_entities(entities)
 
 
@@ -300,4 +305,103 @@ class NarwalCurrentRoomSensor(NarwalEntity, SensorEntity):
     @callback
     def _handle_coordinator_update(self) -> None:
         self._attr_native_value = self._room()
+        super()._handle_coordinator_update()
+
+
+POSITION_MIN_INTERVAL = 1.0  # seconds between position writes while moving
+POSITION_MIN_STEP = 0.05  # metres
+POSITION_MIN_TURN = 5.0  # degrees
+
+
+class NarwalPositionSensor(NarwalEntity, SensorEntity):
+    """Where the robot is: its distance from the dock as the state, and its
+    map position in metres (the frame of clean_zone and calibration_points)
+    as attributes, plus floor plan coordinates once a floor plan is
+    calibrated in the integration's options.
+
+    While the robot moves the state is written at most once a second, so the
+    position attributes are left out of the recorder.
+    """
+
+    _attr_translation_key = "position"
+    _attr_device_class = SensorDeviceClass.DISTANCE
+    _attr_native_unit_of_measurement = UnitOfLength.METERS
+    _attr_suggested_display_precision = 1
+    _unrecorded_attributes = frozenset(
+        {"x", "y", "heading", "floorplan_x", "floorplan_y", "floorplan_heading"}
+    )
+
+    def __init__(self, coordinator: NarwalCoordinator) -> None:
+        super().__init__(coordinator, "position")
+        self._written: tuple[float, float, float] | None = None
+        self._written_at = 0.0
+        self._compute()
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        self.async_on_remove(self.coordinator.async_add_live_listener(self._handle_live))
+
+    def _pose(self) -> Pose | None:
+        data = self.coordinator.data
+        mi = data.map
+        if mi is None:
+            return None
+        if data.status.activity is Activity.DOCKED and mi.station is not None:
+            return mi.station
+        return self.coordinator.live.robot or mi.robot_pose
+
+    def _compute(self) -> tuple[float, float, float] | None:
+        """Set state and attributes; returns (x, y, heading) or None."""
+        mi = self.coordinator.data.map
+        pose = self._pose()
+        if mi is None or pose is None:
+            self._attr_native_value = None
+            self._attr_extra_state_attributes = {}
+            return None
+        cell = mi.border_point_to_cell(pose.x, pose.y)
+        world = mi.cell_to_world(cell.col, cell.row)
+        heading = math.degrees(pose.theta) % 360
+        attrs: dict[str, Any] = {
+            "x": round(world.x, 3),
+            "y": round(world.y, 3),
+            "heading": round(heading),
+            "room": mi.room_name(room_id) if (room_id := mi.room_at(pose.x, pose.y)) is not None else None,
+        }
+        if (affine := affine_from_options(self.coordinator.config_entry.options)) is not None:
+            u, v = affine.apply(world.x, world.y)
+            # Direction on the plan: transform a unit step along the heading.
+            du = affine.a * math.cos(pose.theta) + affine.b * math.sin(pose.theta)
+            dv = affine.d * math.cos(pose.theta) + affine.e * math.sin(pose.theta)
+            attrs |= {
+                "floorplan_x": round(u, 2),
+                "floorplan_y": round(v, 2),
+                "floorplan_heading": round(math.degrees(math.atan2(dv, du)) % 360),
+            }
+        dock = mi.station
+        self._attr_native_value = (
+            round(math.dist((pose.x, pose.y), (dock.x, dock.y)) * mi.resolution_m, 2) if dock else None
+        )
+        self._attr_extra_state_attributes = attrs
+        return (world.x, world.y, heading)
+
+    @callback
+    def _handle_live(self) -> None:
+        """The robot moved: write when it moved or turned enough, at most
+        once per POSITION_MIN_INTERVAL."""
+        now = dt_util.utcnow().timestamp()
+        if now - self._written_at < POSITION_MIN_INTERVAL:
+            return
+        position = self._compute()
+        old = self._written
+        if position is not None and old is not None:
+            turned = abs((position[2] - old[2] + 180) % 360 - 180)
+            if math.dist(position[:2], old[:2]) < POSITION_MIN_STEP and turned < POSITION_MIN_TURN:
+                return
+        self._written, self._written_at = position, now
+        self.async_write_ha_state()
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        self._written = self._compute()
+        self._written_at = dt_util.utcnow().timestamp()
         super()._handle_coordinator_update()

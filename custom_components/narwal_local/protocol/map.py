@@ -204,6 +204,27 @@ class MapInfo:
         """Float border-frame point (dock, furniture, objects) -> display cell."""
         return CellPoint(x - self.border_left, y - self.border_bottom)
 
+    def room_bounds(self) -> dict[int, tuple[float, float, float, float]]:
+        """Bounding box of each room in world metres: (x_min, y_min, x_max,
+        y_max), the outer edges of its cells."""
+        w = self.width
+        cells: dict[int, list[int]] = {}
+        for i, v in enumerate(self.room_grid()):
+            if v in (CELL_UNKNOWN, CELL_WALL):
+                continue
+            col, row = i % w, i // w
+            box = cells.get(v)
+            if box is None:
+                cells[v] = [col, row, col, row]
+            else:
+                box[0], box[1] = min(box[0], col), min(box[1], row)
+                box[2], box[3] = max(box[2], col), max(box[3], row)
+        bounds = {}
+        for room_id, (c0, r0, c1, r1) in cells.items():
+            lo, hi = self.cell_to_world(c0, r0), self.cell_to_world(c1 + 1, r1 + 1)
+            bounds[room_id] = (lo.x, lo.y, hi.x, hi.y)
+        return bounds
+
     def world_to_border(self, x: float, y: float) -> tuple[int, int]:
         """World point in metres -> integer border-frame cell (the frame zones
         are sent in)."""

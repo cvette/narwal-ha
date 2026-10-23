@@ -18,11 +18,11 @@ IMAGE = "image.narwal_map"
 async def test_map_image_served_as_png(hass: HomeAssistant, init_integration, hass_client) -> None:
     state = hass.states.get(IMAGE)
     assert state is not None and state.state not in ("unavailable", "unknown")
-    assert state.attributes["rooms"] == [
-        {"id": 1, "name": "Living room"},
-        {"id": 2, "name": "Kitchen"},
-        {"id": 3, "name": "Hallway"},
-        {"id": 4, "name": "Bedroom"},
+    assert [(r["id"], r["name"]) for r in state.attributes["rooms"]] == [
+        (1, "Living room"),
+        (2, "Kitchen"),
+        (3, "Hallway"),
+        (4, "Bedroom"),
     ]
 
     assert state.attributes["dock_room"] == "Living room"
@@ -71,7 +71,7 @@ async def test_map_change_rerenders(
 
     state = hass.states.get(IMAGE)
     assert state.state != before, "image_last_updated must move on"
-    assert {"id": 4, "name": "Office"} in state.attributes["rooms"]
+    assert (4, "Office") in [(r["id"], r["name"]) for r in state.attributes["rooms"]]
     second = await (await client.get(f"/api/image_proxy/{IMAGE}")).read()
     assert second != first
 

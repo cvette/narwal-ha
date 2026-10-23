@@ -178,6 +178,49 @@ map_modes:
         repeats: "[[repeats]]"
 ```
 
+## Position and floor plan
+
+`sensor.narwal_position` shows the robot's distance from the dock, and its
+attributes say where it is: `x`, `y` in metres (the frame of `clean_zone` and
+`calibration_points`), `heading` in degrees and `room`. While the robot moves
+it updates at most once a second; in the dock it shows the dock's position.
+The position attributes are not stored in the history; exclude the whole
+sensor from the recorder if you do not want its state rows either.
+
+To place the robot on your own floor plan, open the integration's
+**Configure** dialog and enter three spots you can find on both maps: their
+map position in metres and the same spot on your floor plan, in percent of
+the image or in pixels. Room corners work well: `image.narwal_map` lists each
+room's `bounds` (`[x_min, y_min, x_max, y_max]` in metres). Rotation, scale and
+mirroring are worked out from the three points. The sensor then also has
+`floorplan_x`, `floorplan_y` and `floorplan_heading` (degrees, clockwise with
+the image's y axis pointing down).
+
+Example with a Picture Elements card and
+[card-mod](https://github.com/thomasloven/lovelace-card-mod), with the
+calibration entered in percent (not tested on every setup):
+
+```yaml
+type: picture-elements
+image: /local/floorplan.png
+elements:
+  - type: icon
+    icon: mdi:robot-vacuum
+    entity: vacuum.narwal
+    style:
+      left: 0%
+      top: 0%
+    card_mod:
+      style: |
+        :host {
+          left: {{ state_attr('sensor.narwal_position', 'floorplan_x') }}% !important;
+          top: {{ state_attr('sensor.narwal_position', 'floorplan_y') }}% !important;
+        }
+```
+
+`sensor.narwal_current_room` works without any calibration, for example to
+highlight the robot's room on a floor plan or in a 3D view.
+
 ## Consumables
 
 The robot itself only knows which parts are due (shown by
