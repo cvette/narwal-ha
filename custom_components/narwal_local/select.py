@@ -225,7 +225,9 @@ class NarwalMapSelect(NarwalEntity, SelectEntity):
         return next((label for label, map_id in self._labels().items() if map_id == current), None)
 
     async def async_select_option(self, option: str) -> None:
-        await self.coordinator.async_switch_map(self._labels()[option])
+        map_id = self._labels()[option]
+        if map_id != self.coordinator.data.status.map_id:  # the robot rejects its current map
+            await self.coordinator.async_switch_map(map_id)
 
 
 class NarwalLanguageSelect(NarwalEntity, SelectEntity):

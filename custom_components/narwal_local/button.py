@@ -22,11 +22,18 @@ PARALLEL_UPDATES = 1
 class NarwalButtonDescription(ButtonEntityDescription):
     press_fn: Callable[[NarwalRobot], Awaitable[None]]
     exists_fn: Callable[[NarwalData], bool] = lambda _: True
+    available_fn: Callable[[NarwalData], bool] = lambda _: True
 
 
 BUTTONS: tuple[NarwalButtonDescription, ...] = (
     NarwalButtonDescription(key="empty_dust_bin", press_fn=lambda r: r.empty_dust_bin()),
-    NarwalButtonDescription(key="wash_mop", press_fn=lambda r: r.wash_mop()),
+    # The app sends wash_mop only while the robot works (it washes mid-clean);
+    # in the station it sends wash_and_dry_mop, and the robot rejects wash_mop.
+    NarwalButtonDescription(
+        key="wash_mop",
+        press_fn=lambda r: r.wash_mop(),
+        available_fn=lambda d: d.status.in_clean_task,
+    ),
     NarwalButtonDescription(key="dry_mop", press_fn=lambda r: r.dry_mop()),
     NarwalButtonDescription(key="wash_and_dry_mop", press_fn=lambda r: r.wash_and_dry_mop()),
     NarwalButtonDescription(
@@ -82,6 +89,10 @@ class NarwalStationButton(NarwalEntity, ButtonEntity):
         super().__init__(coordinator, description.key)
         self.entity_description = description
         self._attr_translation_key = description.key
+
+    @property
+    def available(self) -> bool:
+        return super().available and self.entity_description.available_fn(self.coordinator.data)
 
     async def async_press(self) -> None:
         await self.coordinator.async_command(self.entity_description.press_fn(self.coordinator.robot))

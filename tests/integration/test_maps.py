@@ -47,3 +47,11 @@ async def test_no_map_select_without_multi_map(
     assert await hass.config_entries.async_setup(config_entry.entry_id)
     await hass.async_block_till_done()
     assert hass.states.get(SELECT) is None
+
+
+async def test_selecting_the_current_map_sends_nothing(hass: HomeAssistant, init_integration, robot: FakeRobot) -> None:
+    calls = len(robot.calls)
+    await hass.services.async_call(
+        "select", "select_option", {ATTR_ENTITY_ID: SELECT, "option": "Map 1"}, blocking=True
+    )
+    assert len(robot.calls) == calls, "the robot rejects switching to its current map"

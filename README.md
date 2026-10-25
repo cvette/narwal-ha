@@ -63,7 +63,8 @@ Assistant `config/custom_components/` folder and restart.
 | `event.narwal_clean_finished` | fired when the robot reports the end of a clean: event type `completed`, `stopped` (ended by someone) or `interrupted` (error, low battery, …); attributes `result`, `clean_type`, `area` (m²), `duration` (s), `progress` (%), `start`, `end` |
 | `switch.narwal_do_not_disturb`, `time.narwal_do_not_disturb_start`, `_end` | do-not-disturb and its window, in the robot's local time |
 | `button.narwal_start_plan_…` | one per cleaning plan saved in the Narwal app; starts it (appears within 15 minutes of saving a plan) |
-| `button.narwal_empty_dust_bin`, `_wash_mop`, `_dry_mop`, `_wash_and_dry_mop`, `_dry_station_dust_bag` (`_dry_dust_bag` for robots with their own bag) | station actions; the robot must be in the station. Stop one with the vacuum's stop |
+| `button.narwal_empty_dust_bin`, `_dry_mop`, `_wash_and_dry_mop`, `_dry_station_dust_bag` (`_dry_dust_bag` for robots with their own bag) | station actions; the robot must be in the station. Stop one with the vacuum's stop |
+| *Wash mop during a clean* button | sends the robot to wash its mop in the middle of a clean; only available while it cleans (in the station the robot rejects it, and the app's dock action "wash" sends wash and dry instead) |
 | `button.narwal_resume_interrupted_clean` | continues a clean that was interrupted (to recharge, or stopped); unavailable while there is nothing to resume |
 | `sensor.narwal_mop_drying_time_left` | remaining mop drying time, 0 when the mop is not drying |
 | `sensor.narwal_last_event` | what the robot did last (self check, room started, mop washing, stuck, found an object, …); attribute `events` lists the last 20 events of the task with time and room |

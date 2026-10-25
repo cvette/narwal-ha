@@ -5,6 +5,14 @@ All notable changes to Narwal Local. Versions follow the `version` in
 built from the tag of the same name. "Verified" means checked on a real
 robot.
 
+## Unreleased
+
+- Fix: "Wash mop" is only available during a clean. In the station the
+  robot rejects it; the app's dock action "wash" sends wash and dry there
+  (verified: empty dust bin and wash and dry work from the station).
+- Fix: choosing the current map in `select.narwal_map` no longer sends a
+  switch the robot rejects.
+
 ## 0.12.0 – 2026-10-24
 
 - `sensor.narwal_last_event` from the robot's cleaning timeline (polled

@@ -87,7 +87,7 @@
         "name": "Staubbehälter leeren"
       },
       "wash_mop": {
-        "name": "Mopp waschen"
+        "name": "Mopp waschen (während der Reinigung)"
       },
       "dry_mop": {
         "name": "Mopp trocknen"
